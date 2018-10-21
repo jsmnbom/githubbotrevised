@@ -1,0 +1,5 @@
+tornado
+-e git+https://github.com/python-telegram-bot/python-telegram-bot.git@V12#egg=python-telegram-bot
+base65536
+PyJWT
+requests
