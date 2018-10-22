@@ -7,6 +7,7 @@ from telegram.ext import TypeHandler, CallbackContext, CommandHandler
 import github
 import settings
 from const import TELEGRAM_BOT_TOKEN, DATABASE_FILE
+from menu import reply_menu
 from persistence import Persistence
 from text import HELP_ADD_REPO
 from webhookupdater import WebhookUpdater
@@ -50,27 +51,13 @@ def privacy_handler(update: Update, _):
     msg.reply_text(f'You have no privacy.')
 
 
-def login_handler(update: Update, _):
-    link = github.github_api.oauth_authorize_url(update.effective_message.from_user.id)
-    update.effective_message.reply_text(f'Click this link please: {link}')
+def login_handler(update: Update, context):
+    context.menu_stack = ['settings']
+    reply_menu(update, context, settings.login_menu)
 
 
 def test_handler(update: Update, context: CallbackContext):
-    # TODO: If exists
-    access_token = context.user_data['access_token']
-
-    installations = github.github_api.get_installations_for_user(access_token=access_token)
-
-    repos = []
-
-    for installation in installations:
-        repos.extend(github.github_api.get_repositories_for_installation(installation['id'],
-                                                                         access_token=access_token))
-
-    update.effective_message.reply_text('Repositories:\n' +
-                                        '\n'.join(f'<a href="{repo["html_url"]}">{repo["full_name"]}</a>'
-                                                  for repo in repos),
-                                        parse_mode=ParseMode.HTML)
+    pass
 
 
 if __name__ == '__main__':

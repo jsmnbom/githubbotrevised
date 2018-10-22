@@ -1,13 +1,12 @@
 from dataclasses import dataclass
-from itertools import zip_longest, islice
+from itertools import zip_longest
 from uuid import uuid4
 
-from telegram import Chat, InlineQueryResultArticle, InputTextMessageContent, Message, ParseMode
+from telegram import Chat, InlineQueryResultArticle, InputTextMessageContent, ParseMode
 from telegram.ext import Dispatcher, InlineQueryHandler, CommandHandler
 
 from github import github_api
 from menu import Button, Menu, BackButton, reply_menu, MenuHandler, ToggleButton, SetButton
-from utils import encode_data_link, decode_first_data_entity
 
 
 @dataclass
@@ -18,7 +17,7 @@ class Repo:
 
 
 class InlineQueries(object):
-    add_repo = 'Add Repository:'
+    add_repo = 'Add repository:'
 
 
 def grouper(iterable, n, fillvalue=None):
@@ -100,7 +99,7 @@ def login_text(update, context):
 login_menu = Menu(
     name='login',
     text=login_text,
-    buttons=lambda _, c: [[BackButton('Ok' if c.user_data.get('access_token') else 'Back')]]
+    buttons=lambda _, c: [[BackButton('OK' if c.user_data.get('access_token') else 'Back')]]
 )
 
 
@@ -111,7 +110,7 @@ def repos_buttons(update, context):
     for row in grouper(repos.values(), 2):
         buttons.append([Button(repo.name, menu=repo.id) for repo in row if repo is not None])
 
-    buttons.append([Button('Add Repository', switch_inline_query_current_chat=InlineQueries.add_repo + ' ')])
+    buttons.append([Button('Add repository', switch_inline_query_current_chat=InlineQueries.add_repo + ' ')])
     buttons.append([BackButton('Back')])
 
     return buttons
@@ -125,25 +124,36 @@ repos_menu = Menu(
 
 
 def repo_text(update, context):
-    repo = context.chat_data['repos'][int(context.match.group(1))]
+    try:
+        repo = context.chat_data['repos'][int(context.match.group(1))]
+    except KeyError:
+        # TODO: Allow two actions for a button: both deleting and going back
+        return 'Repository deleted successfully.'
 
     return f'Menu for {repo.name}'
 
 
 def repo_buttons(update, context):
-    repo = context.chat_data['repos'][int(context.match.group(1))]
+    try:
+        repo = context.chat_data['repos'][int(context.match.group(1))]
+    except KeyError:
+        return [[BackButton('OK')]]
 
     return [
         [ToggleButton('enabled', value=repo.enabled, text='Enabled')],
-        [Button('Delete', callback_data='delete')],
+        [SetButton('delete', None, 'Delete')],
         [BackButton('Back')]
     ]
 
 
 def repo_set_data(update, context):
-    repo = context.chat_data['repos'][int(context.match.group(1))]
+    repo_id = int(context.match.group(1))
 
-    setattr(repo, context.key, context.value)
+    if context.key == 'delete':
+        del context.chat_data['repos'][repo_id]
+    else:
+        repo = context.chat_data['repos'][repo_id]
+        setattr(repo, context.key, context.value)
 
 
 repo_menu = Menu(
@@ -163,61 +173,74 @@ def settings_command(update, context):
 
 
 def inline_add_repo(update, context):
-    try:
-        offset = int(update.inline_query.offset)
-    except ValueError:
-        offset = 0
+    offset = update.inline_query.offset
+    installation_offset, repo_offset = -1, -1
+    if offset:
+        installation_offset, _, repo_offset = offset.partition('|')
+        installation_offset, repo_offset = int(installation_offset), int(repo_offset)
 
-    search = context.match.group(1)
-    repos = context.github_data.setdefault('repos', [])
-    if search:
-        repos = (repo for repo in repos if repo['full_name'].startswith(search))
+    access_token = context.user_data.get('access_token')
 
     results = []
-    for repo in islice(repos, offset * 50, (offset + 1) * 50):
-        results.append(InlineQueryResultArticle(
-            id=repo['id'],
-            title=repo['full_name'],
-            description='Add this repository',
-            input_message_content=InputTextMessageContent(
-                message_text=f'/add_repo {encode_data_link(repo["id"])}{repo["full_name"]}',
-                parse_mode=ParseMode.HTML
-            )
-        ))
-    if not results:
-        results.append(InlineQueryResultArticle(
-            id=uuid4(),
-            title='No results.',
-            description='Tab me to learn how to add your repositories.',
-            input_message_content=InputTextMessageContent(
-                message_text=f'/help add_repo',
-            )
-        ))
+    if access_token:
+        filtered_repositories = []
+        search = context.match.group(1).strip()
+        installations = github_api.get_installations_for_user(access_token)
+        for installation_index, installation in enumerate(installations):
+            if installation_index <= installation_offset:
+                continue
+            repositories = github_api.get_repositories_for_installation(installation['id'],
+                                                                        access_token)
+            for repo_index, repo in enumerate(repositories):
+                if repo_index <= repo_offset:
+                    continue
+                if repo['full_name'].startswith(search) or repo['name'].startswith(search):
+                    filtered_repositories.append(repo)
+                if len(filtered_repositories) >= 50:
+                    break
+            if len(filtered_repositories) >= 50:
+                break
+
+        results = []
+        for repo in filtered_repositories:
+            results.append(InlineQueryResultArticle(
+                id=repo['id'],
+                title=repo['full_name'],
+                description='Add this repository',
+                input_message_content=InputTextMessageContent(
+                    message_text=f'/add_repo {repo["id"]}',
+                    parse_mode=ParseMode.HTML
+                )
+            ))
+        if not results and not offset:
+            results.append(InlineQueryResultArticle(
+                id=uuid4(),
+                title='No results.',
+                description='Tab me to learn how to add your repositories.',
+                input_message_content=InputTextMessageContent(
+                    message_text=f'/help add_repo',
+                )
+            ))
 
     update.inline_query.answer(
         results,
-        switch_pm_text='Not seeing your repository? Tab here.',
+        switch_pm_text=('Not seeing your repository? Tab here.'
+                        if access_token else
+                        'You are not logged in. Tab here to continue.'),
         switch_pm_parameter='help__add_repo',
-        cache_time=15
+        cache_time=15,
+        is_personal=True,
+        next_offset=f'{installation_index-1}|{repo_index}' if results else ''
     )
 
 
 def add_repo_command(update, context):
-    msg: Message = update.effective_message
-
     repos = context.chat_data.setdefault('repos', {})
+    access_token = context.user_data['access_token']
+    repo_id = context.args[0]
+    repository = github_api.get_repository(repo_id, access_token=access_token)
 
-    data = decode_first_data_entity(msg.entities)
-    if data:
-        repo_id = data
-    else:
-        # TODO: FIX
-        msg.reply_text('Need a repo id. Please use /settings for now.')
-        return
-
-    repo_full_name = context.args[0]
-
-    repos[repo_id] = Repo(name=repo_full_name, id=repo_id)
+    repos[repository['id']] = Repo(name=repository['full_name'], id=repository['id'])
 
     context.menu_stack = ['settings']
     reply_menu(update, context, repos_menu)

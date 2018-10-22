@@ -1,6 +1,7 @@
 import logging
 import secrets
 import time
+from functools import lru_cache
 from urllib.parse import urlencode, parse_qs
 
 import jwt
@@ -180,17 +181,26 @@ class GithubAPI:
 
         return r.json()
 
+    @lru_cache(maxsize=32)  # TODO: Do caching properly instead of this badness
     def get_installations_for_user(self, access_token):
         data = self.get_paginated('installations',
                                   'https://api.github.com/user/installations',
                                   access_token=access_token)
         return data
 
+    @lru_cache(maxsize=32)  # TODO: Do caching properly instead of this badness
     def get_repositories_for_installation(self, installation_id, access_token):
         data = self.get_paginated('repositories',
                                   f'https://api.github.com/user/installations/{installation_id}/repositories',
                                   access_token=access_token)
         return data
+
+    def get_repository(self, repo_id, access_token):
+        r = self.get(f'https://api.github.com/repositories/{repo_id}', access_token=access_token)
+
+        r.raise_for_status()
+
+        return r.json()
 
 
 github_api = GithubAPI()
