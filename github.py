@@ -6,6 +6,7 @@ from urllib.parse import urlencode, parse_qs
 
 import jwt
 import requests
+from cachecontrol import CacheControl
 from requests.auth import AuthBase
 from telegram.ext import CallbackContext
 
@@ -104,7 +105,7 @@ class JWTAuth(AuthBase):
 
 class GithubAPI:
     def __init__(self):
-        self.s = requests.session()
+        self.s = CacheControl(requests.session())
 
         self.app_id = GITHUB_APP_ID
         self.jwt_auth = JWTAuth(GITHUB_APP_ID)
@@ -181,14 +182,12 @@ class GithubAPI:
 
         return r.json()
 
-    @lru_cache(maxsize=32)  # TODO: Do caching properly instead of this badness
     def get_installations_for_user(self, access_token):
         data = self.get_paginated('installations',
                                   'https://api.github.com/user/installations',
                                   access_token=access_token)
         return data
 
-    @lru_cache(maxsize=32)  # TODO: Do caching properly instead of this badness
     def get_repositories_for_installation(self, installation_id, access_token):
         data = self.get_paginated('repositories',
                                   f'https://api.github.com/user/installations/{installation_id}/repositories',
