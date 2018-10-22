@@ -207,6 +207,7 @@ def inline_add_repo(update, context):
                 id=repo['id'],
                 title=repo['full_name'],
                 description='Add this repository',
+                thumb_url=repo['owner']['avatar_url'],
                 input_message_content=InputTextMessageContent(
                     message_text=f'/add_repo {repo["id"]}',
                     parse_mode=ParseMode.HTML
