@@ -39,7 +39,7 @@ def start_handler(update: Update, context: CallbackContext):
 def help_handler(update: Update, context: CallbackContext):
     msg = update.effective_message
 
-    if context.args[0] == 'add_repo':
+    if context.args and context.args[0] == 'add_repo':
         msg.reply_text(HELP_ADD_REPO, parse_mode=ParseMode.HTML, disable_web_page_preview=True)
     else:
         # TODO: Add proper general help
@@ -79,8 +79,9 @@ if __name__ == '__main__':
 
     settings.add_handlers(dp)
 
-    dp.add_handler(TypeHandler(github.GithubUpdate, github.GithubHandler().handle_update))
-    dp.add_handler(TypeHandler(github.GithubAuthUpdate, github.GithubHandler().handle_auth_update))
+    github_handler = github.GithubHandler(dp)
+    dp.add_handler(TypeHandler(github.GithubUpdate, github_handler.handle_update))
+    dp.add_handler(TypeHandler(github.GithubAuthUpdate, github_handler.handle_auth_update))
 
     dp.add_error_handler(error_handler)
 
