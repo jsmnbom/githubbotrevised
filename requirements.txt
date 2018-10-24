@@ -4,3 +4,5 @@ base65536
 PyJWT
 requests
 CacheControl
+bleach
+html5lib

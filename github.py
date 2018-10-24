@@ -1,12 +1,13 @@
 import logging
 import secrets
 import time
-from functools import lru_cache
 from urllib.parse import urlencode, parse_qs
 
 import jwt
 import requests
+from bleach.sanitizer import Cleaner
 from cachecontrol import CacheControl
+from html5lib.filters.base import Filter
 from requests.auth import AuthBase
 from telegram.ext import CallbackContext
 
@@ -36,6 +37,77 @@ class GithubAuthUpdate(object):
         self.code = code
         self.raw_state = raw_state
         self.state = state
+
+
+class _GithubFilter(Filter):
+    def __iter__(self):
+        in_quote = False
+        for token in super().__iter__():
+            if token['type'] == 'StartTag' and token['name'] == 'li':
+                if not (token['data'] and token['data'].get('class') != 'task-list-item'):
+                    yield {
+                        'data': '- ',
+                        'type': 'Characters'
+                    }
+            elif token['type'] == 'StartTag' and token['name'] == 'blockquote':
+                in_quote = True
+            elif token['type'] == 'EndTag' and token['name'] == 'blockquote':
+                in_quote = False
+            elif token['type'] == 'StartTag' and token['name'] == 'p':
+                if in_quote:
+                    yield {
+                        'data': '> ',
+                        'type': 'Characters'
+                    }
+            elif token['type'] == 'EmptyTag' and token['name'] == 'hr':
+                yield {
+                    'data': '\n────────────────────\n',
+                    'type': 'Characters'
+                }
+            elif token['type'] == 'EmptyTag' and token['name'] == 'input':
+                if token['data'].get('checked'):
+                    yield {
+                        'data': '☑ ',
+                        'type': 'Characters'
+                    }
+                else:
+                    yield {
+                        'data': '☐ ',
+                        'type': 'Characters'
+                    }
+            elif (token['type'] in ('StartTag', 'EndTag', 'EmptyTag') and
+                  token['name'] in ('li', 'blockquote', 'input', 'hr', 'p')):
+                pass
+            else:
+                yield token
+
+
+# This cleaner is not designed to use to transform content to be used in non-web-page contexts.
+# Is a warning from the bleach docs... that we are gonna totally ignore...
+# TODO: THIS IS NOT THREADSAFE
+_cleaner = Cleaner(
+    tags=[
+        'a',
+        'b',
+        'code',
+        'em',
+        'i',
+        'pre',
+        'strong',
+        'li',  # Stripped in _GithubFilter
+        'input',  # Stripped in _GithubFilter
+        'blockquote',  # Stripped in _GithubFilter
+        'p',  # Stripped in _GithubFilter
+        'hr'  # Stripped in _GithubFilter
+    ],
+    attributes={
+        'a': ['href'],
+        'li': ['class'],
+        'input': ['checked']
+    },
+    strip=True,
+    filters=[_GithubFilter]
+)
 
 
 class GithubHandler:
@@ -114,29 +186,39 @@ class GithubAPI:
         self.oauth_client_secret = GITHUB_OAUTH_CLIENT_SECRET
         self.oauth_redirect_uri = GITHUB_OAUTH_REDIRECT_URI
 
-    def post(self, *args, api=True, jwt_auth=False, access_token=None, **kwargs):
+    def post(self, url, *args, api=True, jwt_bearer=False, oauth_server_auth=None, access_token=None, **kwargs):
         headers = kwargs.pop('headers', {})
         auth = kwargs.pop('auth', None)
-        if api:
-            headers.update(GITHUB_API_ACCEPT)
-        if jwt_auth:
-            auth = self.jwt_auth
-        if access_token:
-            headers.update({'Authorization': f'token {access_token}'})
-
-        return self.s.post(*args, headers=headers, auth=auth, **kwargs)
-
-    def get(self, url, *args, api=True, jwt_bearer=False, access_token=None, **kwargs):
-        headers = kwargs.pop('headers', {})
-        auth = kwargs.pop('auth', None)
+        data = kwargs.pop('data', None)
+        json = kwargs.pop('json', None)
         if api:
             headers.update(GITHUB_API_ACCEPT)
         if jwt_bearer:
             auth = self.jwt_auth
         if access_token:
             headers.update({'Authorization': f'token {access_token}'})
+        if oauth_server_auth and (data or json):
+            (data or json)['client_id'] = GITHUB_OAUTH_CLIENT_ID
+            (data or json)['client_secret'] = GITHUB_OAUTH_CLIENT_SECRET
 
-        return self.s.get(url, *args, headers=headers, auth=auth, **kwargs)
+        return self.s.post(url, *args, data=data, json=json, headers=headers, auth=auth, **kwargs)
+
+    def get(self, url, *args, api=True, jwt_bearer=False, oauth_server_auth=None, access_token=None, **kwargs):
+        headers = kwargs.pop('headers', {})
+        auth = kwargs.pop('auth', None)
+        data = kwargs.pop('data', None)
+        json = kwargs.pop('json', None)
+        if api:
+            headers.update(GITHUB_API_ACCEPT)
+        if jwt_bearer:
+            auth = self.jwt_auth
+        if access_token:
+            headers.update({'Authorization': f'token {access_token}'})
+        if oauth_server_auth and (data or json):
+            (data or json)['client_id'] = GITHUB_OAUTH_CLIENT_ID
+            (data or json)['client_secret'] = GITHUB_OAUTH_CLIENT_SECRET
+
+        return self.s.get(url, *args, data=data, json=json, headers=headers, auth=auth, **kwargs)
 
     def get_paginated(self, key, url, *args, **kwargs):
         r = self.get(url, *args, **kwargs)
@@ -200,6 +282,17 @@ class GithubAPI:
         r.raise_for_status()
 
         return r.json()
+
+    def markdown(self, markdown, context):
+        r = self.post(f'https://api.github.com/markdown', json={
+            'text': markdown,
+            'mode': 'gfm',
+            'context': context
+        }, oauth_server_auth=True)
+
+        r.raise_for_status()
+
+        return r.text
 
 
 github_api = GithubAPI()
