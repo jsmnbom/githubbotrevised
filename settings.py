@@ -7,6 +7,7 @@ from telegram.ext import Dispatcher, InlineQueryHandler, CommandHandler
 
 from github import github_api
 from menu import Button, Menu, BackButton, reply_menu, MenuHandler, ToggleButton, SetButton
+from utils import encode_data_link, decode_first_data_entity
 
 
 @dataclass
@@ -141,7 +142,7 @@ def repo_buttons(update, context):
 
     return [
         [ToggleButton('enabled', value=repo.enabled, text='Enabled')],
-        [SetButton('delete', None, 'Delete')],
+        [SetButton('delete', None, 'Delete')],  # TODO: "Delete" sounds wayyyy too destructive
         [BackButton('Back')]
     ]
 
@@ -209,7 +210,7 @@ def inline_add_repo(update, context):
                 description='Add this repository',
                 thumb_url=repo['owner']['avatar_url'],
                 input_message_content=InputTextMessageContent(
-                    message_text=f'/add_repo {repo["id"]}',
+                    message_text=f'/add_repo {encode_data_link(repo["id"])}<a href="{repo["html_url"]}">{repo["full_name"]}</a>',
                     parse_mode=ParseMode.HTML
                 )
             ))
@@ -238,7 +239,11 @@ def inline_add_repo(update, context):
 def add_repo_command(update, context):
     repos = context.chat_data.setdefault('repos', {})
     access_token = context.user_data['access_token']
-    repo_id = context.args[0]
+    repo_id = decode_first_data_entity(update.effective_message.entities)
+    if not repo_id:
+        update.effective_message.reply_text('Please use /settings to add repositories, instead of using the command directly.')
+        return
+
     repository = github_api.get_repository(repo_id, access_token=access_token)
 
     repos[repository['id']] = Repo(name=repository['full_name'], id=repository['id'])
@@ -257,4 +262,4 @@ def add_handlers(dp: Dispatcher):
     ]))
 
     dp.add_handler(InlineQueryHandler(inline_add_repo, pattern=InlineQueries.add_repo + r'(.*)'))
-    dp.add_handler(CommandHandler('add_repo', add_repo_command))
+    dp.add_handler(CommandHandler('add_repo', add_repo_command, allow_edited=False))
