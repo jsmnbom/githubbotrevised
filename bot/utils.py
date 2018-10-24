@@ -78,6 +78,7 @@ def decode_first_data_entity(entities):
 class _GithubFilter(Filter):
     def __iter__(self):
         in_quote = False
+        in_tag = 0
         for token in super().__iter__():
             if token['type'] == 'StartTag' and token['name'] == 'li':
                 if not (token['data'] and token['data'].get('class') != 'task-list-item'):
@@ -114,6 +115,14 @@ class _GithubFilter(Filter):
             elif (token['type'] in ('StartTag', 'EndTag', 'EmptyTag') and
                   token['name'] in ('li', 'blockquote', 'input', 'hr', 'p')):
                 pass
+            elif token['type'] == 'StartTag':
+                if not in_tag:
+                    yield token
+                in_tag += 1
+            elif token['type'] == 'EndTag':
+                in_tag -= 1
+                if not in_tag:
+                    yield token
             else:
                 yield token
 
@@ -121,7 +130,6 @@ class _GithubFilter(Filter):
 # "This cleaner is not designed to use to transform content to be used in non-web-page contexts."
 # ...is a warning from the bleach docs... that we are gonna totally ignore...
 # TODO: THIS IS NOT THREADSAFE
-# TODO: Does nested tags work? <b><i>test</i></b>
 github_cleaner = Cleaner(
     tags=[
         'a', 'b', 'code', 'em', 'i', 'pre', 'strong',
