@@ -4,7 +4,7 @@ from collections import OrderedDict
 from telegram import InlineKeyboardMarkup, InlineKeyboardButton, Update, ParseMode
 from telegram.ext import CallbackContext, Handler
 
-from utils import encode_data_link, decode_first_data_entity
+from bot.utils import encode_data_link, decode_first_data_entity
 
 SEPARATOR = '/'
 

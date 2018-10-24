@@ -7,7 +7,7 @@ from typing import Any
 import base65536
 from telegram import MessageEntity
 
-from const import HMAC_SECRET
+from bot.const import HMAC_SECRET
 
 URL_BASE = 'https://a.test/'
 

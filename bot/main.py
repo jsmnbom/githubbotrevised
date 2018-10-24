@@ -4,13 +4,14 @@ import logging
 from telegram import Update, ParseMode
 from telegram.ext import TypeHandler, CallbackContext, CommandHandler
 
-import github
-import settings
-from const import TELEGRAM_BOT_TOKEN, DATABASE_FILE
-from menu import reply_menu
-from persistence import Persistence
-from text import HELP_ADD_REPO
-from webhookupdater import WebhookUpdater
+from bot import settings
+from bot.const import TELEGRAM_BOT_TOKEN, DATABASE_FILE
+from bot.github import GithubHandler
+from bot.githubupdates import GithubUpdate, GithubAuthUpdate
+from bot.menu import reply_menu
+from bot.persistence import Persistence
+from bot.text import HELP_ADD_REPO
+from bot.webhookupdater import WebhookUpdater
 
 http.client.HTTPConnection.debuglevel = 5
 
@@ -79,9 +80,9 @@ if __name__ == '__main__':
 
     settings.add_handlers(dp)
 
-    github_handler = github.GithubHandler(dp)
-    dp.add_handler(TypeHandler(github.GithubUpdate, github_handler.handle_update))
-    dp.add_handler(TypeHandler(github.GithubAuthUpdate, github_handler.handle_auth_update))
+    github_handler = GithubHandler(dp)
+    dp.add_handler(TypeHandler(GithubUpdate, github_handler.handle_update))
+    dp.add_handler(TypeHandler(GithubAuthUpdate, github_handler.handle_auth_update))
 
     dp.add_error_handler(error_handler)
 

@@ -5,9 +5,9 @@ from uuid import uuid4
 from telegram import Chat, InlineQueryResultArticle, InputTextMessageContent, ParseMode
 from telegram.ext import Dispatcher, InlineQueryHandler, CommandHandler
 
-from github import github_api
-from menu import Button, Menu, BackButton, reply_menu, MenuHandler, ToggleButton, SetButton
-from utils import encode_data_link, decode_first_data_entity
+from bot.github import github_api
+from bot.menu import Button, Menu, BackButton, reply_menu, MenuHandler, ToggleButton, SetButton
+from bot.utils import encode_data_link, decode_first_data_entity
 
 
 @dataclass
@@ -241,7 +241,8 @@ def add_repo_command(update, context):
     access_token = context.user_data['access_token']
     repo_id = decode_first_data_entity(update.effective_message.entities)
     if not repo_id:
-        update.effective_message.reply_text('Please use /settings to add repositories, instead of using the command directly.')
+        update.effective_message.reply_text(
+            'Please use /settings to add repositories, instead of using the command directly.')
         return
 
     repository = github_api.get_repository(repo_id, access_token=access_token)

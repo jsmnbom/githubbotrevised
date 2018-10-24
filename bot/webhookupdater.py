@@ -11,9 +11,9 @@ from tornado.httpserver import HTTPServer
 from tornado.ioloop import IOLoop
 from tornado.web import Application, RequestHandler, HTTPError
 
-from const import GITHUB_WEBHOOK_SECRET, SERVER_HOSTNAME_PATTERN, SERVER_PORT, TELEGRAM_WEBHOOK_URL, HMAC_SECRET
-from github import GithubUpdate, GithubAuthUpdate
-from utils import secure_decode_64, HMACException
+from bot.const import GITHUB_WEBHOOK_SECRET, SERVER_HOSTNAME_PATTERN, SERVER_PORT, TELEGRAM_WEBHOOK_URL, HMAC_SECRET
+from bot.githubupdates import GithubUpdate, GithubAuthUpdate
+from bot.utils import secure_decode_64, HMACException
 
 
 # noinspection PyAbstractClass
