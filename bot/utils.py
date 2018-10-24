@@ -172,7 +172,7 @@ class TelegramTruncator(Filter):
                         'type': 'EndTag',
                         'name': tag
                     }
-                    yield from iter(self.truncated_message)
+                yield from iter(self.truncated_message)
                 break
             if token['type'] in ('Characters', 'SpaceCharacters'):
                 if (current_length + len(token['data'])) > self.max_length:
@@ -185,8 +185,7 @@ class TelegramTruncator(Filter):
                             'type': 'EndTag',
                             'name': tag
                         }
-                    for token2 in iter(self.truncated_message):
-                        yield token2
+                    yield from iter(self.truncated_message)
                     break
                 else:
                     current_length += len(token['data'])
@@ -200,8 +199,7 @@ class TelegramTruncator(Filter):
 
             yield token
 
-        for token in iter(self.suffix):
-            yield token
+        yield from iter(self.suffix)
 
 
 def truncate(html, truncated_message, suffix):
