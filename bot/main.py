@@ -63,6 +63,10 @@ def test_handler(update: Update, context: CallbackContext):
     pass
 
 
+def delete_job(context: CallbackContext):
+    context.job.context.delete()
+
+
 def reply_handler(update: Update, context: CallbackContext):
     msg = update.effective_message
 
@@ -79,13 +83,14 @@ def reply_handler(update: Update, context: CallbackContext):
     access_token = context.user_data.get('access_token')
 
     if not access_token:
-        msg.reply_text(f'Cannot reply to {issue_type}, since you are not logged in. '
-                       f'Press button below to go to a private chat with me and login.\n\n'
-                       f'<i>This message will self destruct in 30 sec.</i>',
-                       reply_markup=InlineKeyboardMarkup([[
-                           InlineKeyboardButton('Login', url=deep_link(context.bot, 'login'))
-                       ]]),
-                       parse_mode=ParseMode.HTML)
+        sent_msg = msg.reply_text(f'Cannot reply to {issue_type}, since you are not logged in. '
+                                  f'Press button below to go to a private chat with me and login.\n\n'
+                                  f'<i>This message will self destruct in 30 sec.</i>',
+                                  reply_markup=InlineKeyboardMarkup([[
+                                      InlineKeyboardButton('Login', url=deep_link(context.bot, 'login'))
+                                  ]]),
+                                  parse_mode=ParseMode.HTML)
+        context.job_queue.run_once(delete_job, 30, sent_msg)
         return
 
     if issue_type == 'issue':
