@@ -96,6 +96,14 @@ class _GithubFilter(Filter):
         in_quote = False
         in_tag = 0
         for token in super().__iter__():
+            if token['type'] == 'StartTag' and token['name'] == 'pre':
+                if not in_tag:
+                    token['data'] = {}
+                    yield {
+                        'data': 'Suggestion:\n',
+                        'type': 'Characters'
+                    }
+
             if token['type'] == 'StartTag' and token['name'] == 'li':
                 if not (token['data'] and token['data'].get('class') != 'task-list-item'):
                     yield {
@@ -153,8 +161,9 @@ github_cleaner = Cleaner(
     ],
     attributes={
         'a': ['href'],
-        'li': ['class'],
-        'input': ['checked']
+        'li': ['class'],  # Stripped in _GithubFilter
+        'input': ['checked'],  # Stripped in _GithubFilter
+        'pre': ['lang'],  # Stripped in _GithubFilter
     },
     strip=True,
     filters=[_GithubFilter]

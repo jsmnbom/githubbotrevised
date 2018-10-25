@@ -81,19 +81,21 @@ class GithubHandler:
             self._send(repo, text)
 
     def issue_comment(self, update, context):
-        # Any time a comment on an issue is created, edited, or deleted.
+        # Any time a comment on an issue or pull request is created, edited, or deleted.
         # TODO: Possibly support editing and closing of comments?
         if update.payload['action'] == 'created':
             issue = update.payload['issue']
             comment = update.payload['comment']
             author = comment['user']
             repo = update.payload['repository']
+            is_pull_request = 'pull_request' in issue
 
             text = render_github_markdown(comment['body'], repo['full_name'])
 
             issue_link = link(issue['html_url'], f'{repo["full_name"]}#{issue["number"]} {issue["title"]}')
             author_link = link(author['html_url'], '@' + author['login'])
-            data_link = encode_data_link(('issue', repo['full_name'], issue['number'], author['login']))
+            data_link = encode_data_link(('pull request' if is_pull_request else 'issue',
+                                          repo['full_name'], issue['number'], author['login']))
             text = f'{data_link}💬 New comment on {issue_link}\nby {author_link}\n\n{text}'
 
             self._send(repo, text)
@@ -101,15 +103,78 @@ class GithubHandler:
     def pull_request(self, update, context):
         # Pull request opened, closed, reopened, edited, assigned, unassigned, review requested,
         # review request removed, labeled, unlabeled, or synchronized.
-        pass
+        # TODO: Possibly support closed, reopened, edited, assigned etc.
+        if update.payload['action'] == 'opened':
+            pull_request = update.payload['pull_request']
+            author = pull_request['user']
+            repo = update.payload['repository']
+
+            text = render_github_markdown(pull_request['body'], repo['full_name'])
+
+            pull_request_link = link(pull_request['html_url'],
+                                     f'{repo["full_name"]}#{pull_request["number"]} {pull_request["title"]}')
+            author_link = link(author['html_url'], '@' + author['login'])
+            data_link = encode_data_link(('pull request', repo['full_name'], pull_request['number'], author['login']))
+            text = f'{data_link}🔌 New pull request {pull_request_link}\nby {author_link}\n\n{text}'
+
+            self._send(repo, text)
 
     def pull_request_review(self, update, context):
         # Pull request review submitted, edited, or dismissed.
-        pass
+        # TODO: Possibly support edited and dismissed?
+        if update.payload['action'] == 'submitted':
+            review = update.payload['review']
+            pull_request = update.payload['pull_request']
+            author = review['user']
+            repo = update.payload['repository']
+
+            if not review['body']:
+                return
+
+            text = render_github_markdown(review['body'], repo['full_name'])
+
+            review_link = link(review['html_url'],
+                               f'{repo["full_name"]}#{pull_request["number"]} {pull_request["title"]}')
+            author_link = link(author['html_url'], '@' + author['login'])
+            data_link = encode_data_link(('pull request', repo['full_name'], pull_request['number'], author['login']))
+
+            if review['state'] in ('commented', 'approved', 'request_changes'):
+                if review['state'] == 'commented':
+                    state = 'Commented'
+                    emoji = '💬'
+                elif review['state'] == 'approved':
+                    state = 'Approved'
+                    emoji = '✅'
+                elif review['state'] == 'request_changes':
+                    state = 'Changes requested'
+                    emoji = '‼️'
+
+                text = f'{data_link}{emoji} New pull request review {review_link}\n{state} by {author_link}\n\n{text}'
+                self._send(repo, text)
 
     def pull_request_review_comment(self, update, context):
         # Pull request diff comment created, edited, or deleted.
-        pass
+        if update.payload['action'] == 'created':
+            pull_request = update.payload['pull_request']
+            comment = update.payload['comment']
+            author = comment['user']
+            repo = update.payload['repository']
+
+            diff_hunk = f'<pre>{comment["path"]}\n{comment["diff_hunk"]}</pre>'
+
+            text = render_github_markdown(comment['body'], repo['full_name'])
+
+            issue_link = link(comment['html_url'],
+                              f'{repo["full_name"]}#{pull_request["number"]} {pull_request["title"]}')
+            author_link = link(author['html_url'], '@' + author['login'])
+            data_link = encode_data_link(('pull request review comment',
+                                          repo['full_name'],
+                                          pull_request['number'],
+                                          comment['in_reply_to_id'] if 'in_reply_to_id' in comment else comment['id'],
+                                          author['login'],))
+            text = f'{data_link}💬 New pull request review comment {issue_link}\nby {author_link}\n{diff_hunk}\n\n{text}'
+
+            self._send(repo, text)
 
     # def integration_installation_repositories(self, update, context):
     #     new_repos = [{'id': repo['id'], 'full_name': repo['full_name']} for repo in

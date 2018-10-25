@@ -152,9 +152,19 @@ class GithubAPI:
 
         return r.text
 
-    def add_issue_comment(self, repo, issue_number, body, access_token):
-        r = self.post(f'https://api.github.com/repos/{repo}/issues/{issue_number}/comments', json={
+    def add_issue_comment(self, repo, number, body, access_token):
+        r = self.post(f'https://api.github.com/repos/{repo}/issues/{number}/comments', json={
             'body': body
+        }, access_token=access_token)
+
+        r.raise_for_status()
+
+        return r.text
+
+    def add_review_comment(self, repo, number, in_reply_to, body, access_token):
+        r = self.post(f'https://api.github.com/repos/{repo}/pulls/{number}/comments', json={
+            'body': body,
+            'in_reply_to': in_reply_to
         }, access_token=access_token)
 
         r.raise_for_status()
