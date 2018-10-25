@@ -11,6 +11,8 @@ from bot.const import (GITHUB_PRIVATE_KEY_PATH, GITHUB_APP_ID, HMAC_SECRET, GITH
                        GITHUB_OAUTH_CLIENT_SECRET, GITHUB_OAUTH_REDIRECT_URI)
 from bot.utils import secure_encode_64
 
+GITHUB_API_ACCEPT = {'Accept': 'application/vnd.github.machine-man-preview+json'}
+
 
 class JWTAuth(AuthBase):
     def __init__(self, app_id):
@@ -145,6 +147,15 @@ class GithubAPI:
             'mode': 'gfm',
             'context': context
         }, oauth_server_auth=True)
+
+        r.raise_for_status()
+
+        return r.text
+
+    def add_issue_comment(self, repo, issue_number, body, access_token):
+        r = self.post(f'https://api.github.com/repos/{repo}/issues/{issue_number}/comments', json={
+            'body': body
+        }, access_token=access_token)
 
         r.raise_for_status()
 

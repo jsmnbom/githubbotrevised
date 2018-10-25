@@ -12,10 +12,11 @@ from bleach.sanitizer import Cleaner
 from html5lib.filters.base import Filter
 from html5lib.serializer import HTMLSerializer
 from telegram import MessageEntity
+from telegram.ext import BaseFilter
 
 from bot.const import HMAC_SECRET
 
-URL_BASE = 'https://a.test/'
+URL_BASE = 'https://ghbot.test/'
 
 
 class HMACException(Exception):
@@ -73,6 +74,21 @@ def decode_first_data_entity(entities):
     for entity in entities:
         if entity.type == MessageEntity.TEXT_LINK and entity.url.startswith(URL_BASE):
             return decode_data_entity(entity)
+
+
+def deep_link(bot, data):
+    return f'https://telegram.me/{bot.username}?start={data}'
+
+
+class _ReplyDataLinkFilter(BaseFilter):
+    def filter(self, message):
+        for entity in message.reply_to_message.entities:
+            if entity.type == MessageEntity.TEXT_LINK:
+                return entity.url.startswith(URL_BASE)
+            break
+
+
+reply_data_link_filter = _ReplyDataLinkFilter()
 
 
 class _GithubFilter(Filter):

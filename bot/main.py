@@ -1,16 +1,18 @@
 import http.client
 import logging
 
-from telegram import Update, ParseMode
-from telegram.ext import TypeHandler, CallbackContext, CommandHandler
+from telegram import Update, ParseMode, InlineKeyboardMarkup, InlineKeyboardButton
+from telegram.ext import TypeHandler, CallbackContext, CommandHandler, MessageHandler, Filters
 
 from bot import settings
 from bot.const import TELEGRAM_BOT_TOKEN, DATABASE_FILE
 from bot.github import GithubHandler
+from bot.githubapi import github_api
 from bot.githubupdates import GithubUpdate, GithubAuthUpdate
 from bot.menu import reply_menu
 from bot.persistence import Persistence
 from bot.text import HELP_ADD_REPO
+from bot.utils import decode_first_data_entity, deep_link, reply_data_link_filter
 from bot.webhookupdater import WebhookUpdater
 
 http.client.HTTPConnection.debuglevel = 5
@@ -61,6 +63,37 @@ def test_handler(update: Update, context: CallbackContext):
     pass
 
 
+def reply_handler(update: Update, context: CallbackContext):
+    msg = update.effective_message
+
+    if msg.text[0] == '!':
+        return
+
+    data = decode_first_data_entity(msg.reply_to_message.entities)
+
+    if not data:
+        return
+
+    issue_type, repo, number, author = data
+
+    access_token = context.user_data.get('access_token')
+
+    if not access_token:
+        msg.reply_text(f'Cannot reply to {issue_type}, since you are not logged in. '
+                       f'Press button below to go to a private chat with me and login.\n\n'
+                       f'<i>This message will self destruct in 30 sec.</i>',
+                       reply_markup=InlineKeyboardMarkup([[
+                           InlineKeyboardButton('Login', url=deep_link(context.bot, 'login'))
+                       ]]),
+                       parse_mode=ParseMode.HTML)
+        return
+
+    if issue_type == 'issue':
+        text = f'@{author} {msg.text_markdown}'
+
+        github_api.add_issue_comment(repo, number, text, access_token=access_token)
+
+
 if __name__ == '__main__':
     persistence = Persistence(DATABASE_FILE)
     updater = WebhookUpdater(TELEGRAM_BOT_TOKEN,
@@ -77,6 +110,9 @@ if __name__ == '__main__':
     dp.add_handler(CommandHandler('privacy', privacy_handler))
     dp.add_handler(CommandHandler('login', login_handler))
     dp.add_handler(CommandHandler('test', test_handler))
+
+    dp.add_handler(MessageHandler(Filters.reply & reply_data_link_filter, reply_handler,
+                                  channel_post_updates=False, edited_updates=False))
 
     settings.add_handlers(dp)
 

@@ -9,7 +9,7 @@ from bot.menu import edit_menu_by_id
 from bot.utils import github_cleaner, link, truncate, encode_data_link
 
 TRUNCATED_MESSAGE = '\n<b>[Truncated message, open on GitHub to read more]</b>'
-REPLY_MESSAGE = '\n\n<i>Reply to this message to post a comment on GitHub.</i>'
+REPLY_MESSAGE = '\n\n<i>Reply to this message to post a comment on GitHub (use ! to suppress).</i>'
 
 
 def render_github_markdown(markdown, context: str):
