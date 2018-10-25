@@ -58,7 +58,7 @@ def secure_decode_65536(input_data, secret):
 
 
 def encode_data_link(data):
-    return f'<a href="{URL_BASE}{secure_encode_65536(data, HMAC_SECRET)}">​</a>'
+    return f'<a href="{URL_BASE}{secure_encode_65536(data, HMAC_SECRET)}">\u200b</a>'
 
 
 def decode_data_link(url):
@@ -146,14 +146,16 @@ github_cleaner = Cleaner(
 
 
 class TelegramTruncator(Filter):
-    def __init__(self, source, truncated_message, suffix,
-                 max_entities=telegram.constants.MAX_MESSAGE_ENTITIES,
-                 max_length=telegram.constants.MAX_MESSAGE_LENGTH):
+    def __init__(self, source,
+                 truncated_message,
+                 suffix,
+                 max_entities=None,
+                 max_length=None):
         super().__init__(source)
         self.truncated_message = truncated_message or []
         self.suffix = suffix or []
-        self.max_entities = max_entities
-        self.max_length = max_length
+        self.max_entities = max_entities or telegram.constants.MAX_MESSAGE_ENTITIES
+        self.max_length = max_length or telegram.constants.MAX_MESSAGE_LENGTH
 
     def __iter__(self):
         for token in itertools.chain(self.truncated_message, self.suffix):
@@ -202,11 +204,15 @@ class TelegramTruncator(Filter):
         yield from iter(self.suffix)
 
 
-def truncate(html, truncated_message, suffix):
+def truncate(html, truncated_message, suffix, max_entities=None, max_length=None):
     walker = html5lib.getTreeWalker('etree')
     html_stream = walker(html5lib.parseFragment(html, treebuilder='etree'))
     truncated_message_stream = walker(html5lib.parseFragment(truncated_message, treebuilder='etree'))
     suffix_stream = walker(html5lib.parseFragment(suffix, treebuilder='etree'))
-    truncated = TelegramTruncator(html_stream, truncated_message=truncated_message_stream, suffix=suffix_stream)
-    return HTMLSerializer().render(truncated)
+    truncated = TelegramTruncator(html_stream, truncated_message=truncated_message_stream, suffix=suffix_stream,
+                                  max_entities=max_entities, max_length=max_length)
+    return HTMLSerializer().render(truncated).strip('\n')
 
+
+def link(url, text):
+    return f'<a href="{url}">{text}</a>'

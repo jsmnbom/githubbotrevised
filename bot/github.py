@@ -6,14 +6,15 @@ from telegram.ext import CallbackContext, Dispatcher
 from bot.githubapi import github_api
 from bot.githubupdates import GithubAuthUpdate, GithubUpdate
 from bot.menu import edit_menu_by_id
-from bot.utils import github_cleaner
+from bot.utils import github_cleaner, link, truncate, encode_data_link
 
-GITHUB_API_ACCEPT = {'Accept': 'application/vnd.github.machine-man-preview+json'}
+TRUNCATED_MESSAGE = '\n<b>[Truncated message, open on GitHub to read more]</b>'
+REPLY_MESSAGE = '\n\n<i>Reply to this message to post a comment on GitHub.</i>'
 
 
 def render_github_markdown(markdown, context: str):
     html = github_api.markdown(markdown, context)
-    return github_cleaner.clean(html)
+    return github_cleaner.clean(html).strip('\n')
 
 
 class GithubHandler:
@@ -58,13 +59,23 @@ class GithubHandler:
         # Issue opened, edited, closed, reopened, assigned, unassigned, labeled,
         # unlabeled, milestoned, or demilestoned.
         # TODO: Possibly support editing, closing, reopening, etc. of issues
-        issue = update.payload['issue']
-        repo = update.payload['repository']
+        if update.payload['action'] == 'opened':
+            issue = update.payload['issue']
+            author = issue['user']
+            repo = update.payload['repository']
 
-        text = render_github_markdown(issue['body'], repo['full_name'])
+            text = render_github_markdown(issue['body'], repo['full_name'])
 
-        for chat_id in self._iter_chat_ids(repo):
-            self.dispatcher.bot.send_message(chat_id=chat_id, text=text, parse_mode=ParseMode.HTML)
+            issue_link = link(issue['html_url'], f'{repo["full_name"]}#{issue["number"]} {issue["title"]}')
+            author_link = link(author['html_url'], '@' + author['login'])
+            data_link = encode_data_link(('issue', repo['full_name'], issue['number'], author['login']))
+            text = f'{data_link}🐛 New Issue {issue_link}\nby {author_link}\n\n{text}'
+
+            text = truncate(text, TRUNCATED_MESSAGE, REPLY_MESSAGE)
+
+            for chat_id in self._iter_chat_ids(repo):
+                self.dispatcher.bot.send_message(chat_id=chat_id, text=text,
+                                                 parse_mode=ParseMode.HTML, disable_web_page_preview=True)
 
     def issue_comment(self, update, context):
         # Any time a comment on an issue is created, edited, or deleted.
