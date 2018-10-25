@@ -55,6 +55,13 @@ class GithubHandler:
                     if repo == repo_id:
                         yield chat_id
 
+    def _send(self, repo, text):
+        text = truncate(text, TRUNCATED_MESSAGE, REPLY_MESSAGE)
+
+        for chat_id in self._iter_chat_ids(repo):
+            self.dispatcher.bot.send_message(chat_id=chat_id, text=text,
+                                             parse_mode=ParseMode.HTML, disable_web_page_preview=True)
+
     def issues(self, update, _):
         # Issue opened, edited, closed, reopened, assigned, unassigned, labeled,
         # unlabeled, milestoned, or demilestoned.
@@ -69,18 +76,27 @@ class GithubHandler:
             issue_link = link(issue['html_url'], f'{repo["full_name"]}#{issue["number"]} {issue["title"]}')
             author_link = link(author['html_url'], '@' + author['login'])
             data_link = encode_data_link(('issue', repo['full_name'], issue['number'], author['login']))
-            text = f'{data_link}🐛 New Issue {issue_link}\nby {author_link}\n\n{text}'
+            text = f'{data_link}🐛 New issue {issue_link}\nby {author_link}\n\n{text}'
 
-            text = truncate(text, TRUNCATED_MESSAGE, REPLY_MESSAGE)
-
-            for chat_id in self._iter_chat_ids(repo):
-                self.dispatcher.bot.send_message(chat_id=chat_id, text=text,
-                                                 parse_mode=ParseMode.HTML, disable_web_page_preview=True)
+            self._send(repo, text)
 
     def issue_comment(self, update, context):
         # Any time a comment on an issue is created, edited, or deleted.
         # TODO: Possibly support editing and closing of comments?
-        pass
+        if update.payload['action'] == 'created':
+            issue = update.payload['issue']
+            comment = update.payload['comment']
+            author = comment['user']
+            repo = update.payload['repository']
+
+            text = render_github_markdown(comment['body'], repo['full_name'])
+
+            issue_link = link(issue['html_url'], f'{repo["full_name"]}#{issue["number"]} {issue["title"]}')
+            author_link = link(author['html_url'], '@' + author['login'])
+            data_link = encode_data_link(('issue', repo['full_name'], issue['number'], author['login']))
+            text = f'{data_link}💬 New comment on {issue_link}\nby {author_link}\n\n{text}'
+
+            self._send(repo, text)
 
     def pull_request(self, update, context):
         # Pull request opened, closed, reopened, edited, assigned, unassigned, review requested,
