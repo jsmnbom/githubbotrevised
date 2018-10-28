@@ -128,8 +128,7 @@ def repo_text(update, context):
     try:
         repo = context.chat_data['repos'][int(context.match.group(1))]
     except KeyError:
-        # TODO: Allow two actions for a button: both deleting and going back
-        return 'Repository deleted successfully.'
+        return 'Repository removed successfully.'
 
     return f'Menu for {repo.name}'
 
@@ -142,7 +141,7 @@ def repo_buttons(update, context):
 
     return [
         [ToggleButton('enabled', value=repo.enabled, text='Enabled')],
-        [SetButton('delete', None, 'Delete')],  # TODO: "Delete" sounds wayyyy too destructive
+        [SetButton('remove', None, 'Remove')],
         [BackButton('Back')]
     ]
 
@@ -150,7 +149,7 @@ def repo_buttons(update, context):
 def repo_set_data(update, context):
     repo_id = int(context.match.group(1))
 
-    if context.key == 'delete':
+    if context.key == 'remove':
         del context.chat_data['repos'][repo_id]
     else:
         repo = context.chat_data['repos'][repo_id]
