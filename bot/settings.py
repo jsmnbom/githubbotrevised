@@ -1,4 +1,3 @@
-from dataclasses import dataclass
 from itertools import zip_longest
 from uuid import uuid4
 
@@ -7,16 +6,10 @@ from telegram.ext import Dispatcher, InlineQueryHandler, CommandHandler
 
 from bot.github import github_api
 from bot.menu import Button, Menu, BackButton, reply_menu, MenuHandler, ToggleButton, SetButton
+from bot.repo import Repo
 from bot.utils import encode_data_link, decode_first_data_entity
 
 BACK = '🡄 Back'
-
-
-@dataclass
-class Repo:
-    name: str
-    id: int
-    enabled: bool = True
 
 
 class InlineQueries(object):
@@ -132,17 +125,24 @@ def repo_text(update, context):
     except KeyError:
         return 'Repository removed successfully.'
 
-    return f'Menu for {repo.name}'
+    return (f'🗃️ Notification settings for repository: {repo.name}\n\n'
+            f'Please select the notifications you would like to receive for this repository, '
+            f'or press the remove button to stop receiving notifications for it.')
 
 
 def repo_buttons(update, context):
     try:
-        repo = context.chat_data['repos'][int(context.match.group(1))]
+        repo: Repo = context.chat_data['repos'][int(context.match.group(1))]
     except KeyError:
         return [[BackButton('OK')]]
 
     return [
-        [ToggleButton('enabled', value=repo.enabled, text='Enabled')],
+        [ToggleButton('issues', value=repo.issues, text='New issues')],
+        [ToggleButton('issue_comments', value=repo.issue_comments, text='Comments on issues')],
+        [ToggleButton('pulls', value=repo.pulls, text='New pull requests')],
+        [ToggleButton('pull_comments', value=repo.pull_comments, text='Comments on pull requests')],
+        [ToggleButton('pull_reviews', value=repo.pull_reviews, text='New pull request reviews')],
+        [ToggleButton('pull_review_comments', value=repo.pull_review_comments, text='Pull request review comments')],
         [SetButton('remove', None, '❌ Remove')],
         [BackButton(BACK)]
     ]

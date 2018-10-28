@@ -1,4 +1,5 @@
 import logging
+from typing import Callable
 
 from telegram import ParseMode
 from telegram.ext import CallbackContext, Dispatcher
@@ -6,6 +7,7 @@ from telegram.ext import CallbackContext, Dispatcher
 from bot.githubapi import github_api
 from bot.githubupdates import GithubAuthUpdate, GithubUpdate
 from bot.menu import edit_menu_by_id
+from bot.repo import Repo
 from bot.utils import github_cleaner, link, truncate, encode_data_link
 
 TRUNCATED_MESSAGE = '\n<b>[Truncated message, open on GitHub to read more]</b>'
@@ -47,20 +49,21 @@ class GithubHandler:
     def ping(self, update, _):
         self.logger.info('PING: %s', update.payload)
 
-    def _iter_chat_ids(self, repository):
+    def _iter_repos(self, repository):
         repo_id = repository['id']
         for chat_id, chat_data in self.dispatcher.chat_data.items():
             if 'repos' in chat_data:
-                for repo in chat_data['repos'].keys():
-                    if repo == repo_id:
-                        yield chat_id
+                for repo in chat_data['repos'].values():
+                    if repo.id == repo_id:
+                        yield chat_id, repo
 
-    def _send(self, repo, text):
+    def _send(self, repo, text, check_repo: Callable[[Repo], bool]):
         text = truncate(text, TRUNCATED_MESSAGE, REPLY_MESSAGE)
 
-        for chat_id in self._iter_chat_ids(repo):
-            self.dispatcher.bot.send_message(chat_id=chat_id, text=text,
-                                             parse_mode=ParseMode.HTML, disable_web_page_preview=True)
+        for chat_id, repo in self._iter_repos(repo):
+            if check_repo(repo):
+                self.dispatcher.bot.send_message(chat_id=chat_id, text=text,
+                                                 parse_mode=ParseMode.HTML, disable_web_page_preview=True)
 
     def issues(self, update, _):
         # Issue opened, edited, closed, reopened, assigned, unassigned, labeled,
@@ -78,7 +81,7 @@ class GithubHandler:
             data_link = encode_data_link(('issue', repo['full_name'], issue['number'], author['login']))
             text = f'{data_link}🐛 New issue {issue_link}\nby {author_link}\n\n{text}'
 
-            self._send(repo, text)
+            self._send(repo, text, lambda r: r.issues)
 
     def issue_comment(self, update, context):
         # Any time a comment on an issue or pull request is created, edited, or deleted.
@@ -98,7 +101,7 @@ class GithubHandler:
                                           repo['full_name'], issue['number'], author['login']))
             text = f'{data_link}💬 New comment on {issue_link}\nby {author_link}\n\n{text}'
 
-            self._send(repo, text)
+            self._send(repo, text, lambda r: r.pull_comments if is_pull_request else r.issue_comments)
 
     def pull_request(self, update, context):
         # Pull request opened, closed, reopened, edited, assigned, unassigned, review requested,
@@ -117,7 +120,7 @@ class GithubHandler:
             data_link = encode_data_link(('pull request', repo['full_name'], pull_request['number'], author['login']))
             text = f'{data_link}🔌 New pull request {pull_request_link}\nby {author_link}\n\n{text}'
 
-            self._send(repo, text)
+            self._send(repo, text, lambda r: r.pulls)
 
     def pull_request_review(self, update, context):
         # Pull request review submitted, edited, or dismissed.
@@ -150,7 +153,7 @@ class GithubHandler:
                     emoji = '‼️'
 
                 text = f'{data_link}{emoji} New pull request review {review_link}\n{state} by {author_link}\n\n{text}'
-                self._send(repo, text)
+                self._send(repo, text, lambda r: r.pull_reviews)
 
     def pull_request_review_comment(self, update, context):
         # Pull request diff comment created, edited, or deleted.
@@ -174,7 +177,7 @@ class GithubHandler:
                                           author['login'],))
             text = f'{data_link}💬 New pull request review comment {issue_link}\nby {author_link}\n{diff_hunk}\n\n{text}'
 
-            self._send(repo, text)
+            self._send(repo, text, lambda r: r.pull_review_comments)
 
     # def integration_installation_repositories(self, update, context):
     #     new_repos = [{'id': repo['id'], 'full_name': repo['full_name']} for repo in
