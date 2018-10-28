@@ -9,6 +9,8 @@ from bot.github import github_api
 from bot.menu import Button, Menu, BackButton, reply_menu, MenuHandler, ToggleButton, SetButton
 from bot.utils import encode_data_link, decode_first_data_entity
 
+BACK = '🡄 Back'
+
 
 @dataclass
 class Repo:
@@ -30,7 +32,7 @@ def grouper(iterable, n, fillvalue=None):
 def settings_text(update, context):
     private = update.effective_chat.type == Chat.PRIVATE
 
-    text = f'Settings for {context.bot.name}\n\n'
+    text = f'⚙ Settings for {context.bot.name}\n\n'
 
     if private:
         access_token = context.user_data.get('access_token')
@@ -57,13 +59,13 @@ def settings_buttons(update, context):
         access_token = context.user_data.get('access_token')
 
         if access_token:
-            buttons.append(SetButton('login', None, 'Logout'))
+            buttons.append(SetButton('login', None, '🔒 Logout'))
         else:
-            buttons.append(Button('Login', menu='login'))
+            buttons.append(Button('🔑 Login', menu='login'))
     else:
-        buttons.append(Button('User settings', url=f'https://telegram.me/{context.bot.username}?start=settings'))
+        buttons.append(Button('👤 User settings', url=f'https://telegram.me/{context.bot.username}?start=settings'))
 
-    buttons.append(Button('Repositories', menu='repos'))
+    buttons.append(Button('🗃️ Repositories', menu='repos'))
 
     return [[button] for button in buttons]
 
@@ -100,7 +102,7 @@ def login_text(update, context):
 login_menu = Menu(
     name='login',
     text=login_text,
-    buttons=lambda _, c: [[BackButton('OK' if c.user_data.get('access_token') else 'Back')]]
+    buttons=lambda _, c: [[BackButton('OK' if c.user_data.get('access_token') else BACK)]]
 )
 
 
@@ -112,7 +114,7 @@ def repos_buttons(update, context):
         buttons.append([Button(repo.name, menu=repo.id) for repo in row if repo is not None])
 
     buttons.append([Button('Add repository', switch_inline_query_current_chat=InlineQueries.add_repo + ' ')])
-    buttons.append([BackButton('Back')])
+    buttons.append([BackButton(BACK)])
 
     return buttons
 
@@ -141,8 +143,8 @@ def repo_buttons(update, context):
 
     return [
         [ToggleButton('enabled', value=repo.enabled, text='Enabled')],
-        [SetButton('remove', None, 'Remove')],
-        [BackButton('Back')]
+        [SetButton('remove', None, '❌ Remove')],
+        [BackButton(BACK)]
     ]
 
 
