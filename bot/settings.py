@@ -144,6 +144,10 @@ def repo_buttons(update, context):
         [ToggleButton('pull_comments', value=repo.pull_comments, text='Comments on pull requests')],
         [ToggleButton('pull_reviews', value=repo.pull_reviews, text='New pull request reviews')],
         [ToggleButton('pull_review_comments', value=repo.pull_review_comments, text='Pull request review comments')],
+        [ToggleButton('commit_comments', value=repo.commit_comments, text='Comment on a commit/diff')],
+        [ToggleButton('wiki_pages', value=repo.wiki_pages, text='Wiki page updated')],
+        [ToggleButton('push', value=repo.push, text='Commits pushed to any branch')],
+        [ToggleButton('push_main', value=repo.push_main, text='Commits pushed to default branch')],
         [SetButton('remove', None, '❌ Remove')],
         [BackButton(BACK)]
     ]

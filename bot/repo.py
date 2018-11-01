@@ -11,3 +11,7 @@ class Repo:
     pull_comments: bool = True
     pull_reviews: bool = True
     pull_review_comments: bool = True
+    wiki_pages: bool = False
+    push: bool = False
+    push_main: bool = True
+    commit_comments: bool = True

@@ -57,8 +57,8 @@ class GithubHandler:
                     if repo.id == repo_id:
                         yield chat_id, repo
 
-    def _send(self, repo, text, check_repo: Callable[[Repo], bool]):
-        text = truncate(text, TRUNCATED_MESSAGE, REPLY_MESSAGE)
+    def _send(self, repo, text, check_repo: Callable[[Repo], bool], suffix=REPLY_MESSAGE):
+        text = truncate(text, TRUNCATED_MESSAGE, suffix)
 
         for chat_id, repo in self._iter_repos(repo):
             if check_repo(repo):
@@ -178,6 +178,62 @@ class GithubHandler:
             text = f'{data_link}💬 New pull request review comment {issue_link}\nby {author_link}\n{diff_hunk}\n\n{text}'
 
             self._send(repo, text, lambda r: r.pull_review_comments)
+
+    def push(self, update, context):
+        # Triggered on a push to a repository branch.
+        # Branch pushes and repository tag pushes also trigger webhook push events.
+        commits = update.payload['commits']
+        ref = update.payload['ref']
+
+        if commits and ref.startswith('refs/heads/'):
+            branch = ref[len('refs/heads/'):]
+            repo = update.payload['repository']
+            compare = update.payload['compare']
+
+            text = f'🔨 <a href="{compare}">{len(commits)} new commits</a> to {repo["full_name"]}:{branch}\n\n'
+
+            for commit in commits:
+                text += f'<a href="{commit["url"]}">{commit["id"][:7]}</a>: {commit["message"]} by {commit["author"]["name"]}'
+
+            self._send(repo, text, lambda r: (r.push_main or r.push) if branch == repo["default_branch"] else r.push,
+                       suffix='')
+
+    def gollum(self, update, context):
+        # Wiki page is created or updated.
+        pages = update.payload['pages']
+        repo = update.payload['repository']
+        sender = update.payload['sender']
+
+        text = f'🔨 {len(pages)} {repo["full_name"]} wiki page{"s" if len(pages) > 1 else ""} were updated '
+        sender_link = link(sender['html_url'], '@' + sender['login'])
+        text += f'by {sender_link}\n\n'
+
+        for page in pages:
+            text += f'<a href="{page["html_url"]}">{page["title"]}</a>'
+
+        self._send(repo, text, lambda r: r.wiki_pages, suffix='')
+
+    def commit_comment(self, update, context):
+        if update.payload['action'] == 'created':
+            repo = update.payload['repository']
+            comment = update.payload['comment']
+            author = comment['user']
+
+            author_link = link(author['html_url'], '@' + author['login'])
+            text = f'💬 <a href="{comment["html_url"]}">New comment</a> on commit {comment["commit_id"][:7]} by {author_link}'
+            position, line, path = comment['position'], comment['line'], comment['path']
+            if path:
+                text += f'\nPath: {path}'
+            if line:
+                text += f'\nLine: {line}'
+                if position == 1:
+                    text += ' (before)'
+                elif position == 2:
+                    text += ' (after)'
+
+            text += f'\n\n{comment["body"]}'
+
+            self._send(repo, text, lambda r: r.commit_comments, suffix='')
 
     # def integration_installation_repositories(self, update, context):
     #     new_repos = [{'id': repo['id'], 'full_name': repo['full_name']} for repo in
