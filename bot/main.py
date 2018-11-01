@@ -38,7 +38,7 @@ def start_handler(update: Update, context: CallbackContext):
     msg.reply_text(f'👋 Hello, I am {context.bot.name}.\n'
                    f'I can notify you about events in your public GitHub repositories. '
                    f'You can also reply to my messages to post comments to GitHub right from Telegram. '
-                   f'I am an improved version of the telegram provided githubbot.\n\n'
+                   f'I am an improved version of the Telegram GitHub Bot.\n\n'
                    f'Use /settings to get started.')
 
 
@@ -57,16 +57,29 @@ def help_handler(update: Update, context: CallbackContext):
     msg.reply_text(f'<b>Github notification guide.</b>\n\n{text}\n\n'
                    f'Note that GitHub Help has more in depth guides on how to install GitHub Apps <a href="https://help.github.com/articles/installing-an-app-in-your-personal-account/#installing-a-github-app-in-your-personal-account">in your personal account</a> or <a href="https://help.github.com/articles/installing-an-app-in-your-organization/#installing-a-github-app-in-your-organization">in your organisation</a> if you are having trouble with step 1.',
                    reply_markup=InlineKeyboardMarkup([
-                       [InlineKeyboardButton('Add me to a group', url=f'https://telegram.me/{context.bot.username}?startgroup=start')]
+                       [InlineKeyboardButton('Add me to a group',
+                                             url=f'https://telegram.me/{context.bot.username}?startgroup=start')]
                    ]),
                    parse_mode=ParseMode.HTML,
                    disable_web_page_preview=True)
 
 
-
-def privacy_handler(update: Update, _):
+def privacy_handler(update: Update, context: CallbackContext):
     msg = update.effective_message
-    msg.reply_text(f'You have no privacy.')
+    msg.reply_text(
+        f'🔏 Privacy policy for {context.bot.name}\n\n'
+        f'GithubBot Revised is an open source bot built by <a href="https://telegram.me/jsmnbom">Jasmin Bom</a>.\n\n'
+        f'GithubBot revised stores GitHub login tokens - if you logout they will be deleted from the server.\n'
+        f'To prevent overloading GitHub servers, data received from GitHub is also cached according to GitHub server headers.\n\n'
+        f'THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT '
+        f'LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. '
+        f'IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, '
+        f'WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE '
+        f'OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.\n\n'
+        f'The MIT-licensed source code for GithubBot revised can be found at <a href="https://github.com/jsmnbom/githubbotrevised">GitHub</a>.',
+        parse_mode=ParseMode.HTML,
+        disable_web_page_preview=True
+    )
 
 
 def login_handler(update: Update, context):
