@@ -5,7 +5,7 @@ from telegram import Update, ParseMode, InlineKeyboardMarkup, InlineKeyboardButt
 from telegram.ext import TypeHandler, CallbackContext, CommandHandler, MessageHandler, Filters
 
 from bot import settings
-from bot.const import TELEGRAM_BOT_TOKEN, DATABASE_FILE
+from bot.const import TELEGRAM_BOT_TOKEN, DATABASE_FILE, DEBUG
 from bot.github import GithubHandler
 from bot.githubapi import github_api
 from bot.githubupdates import GithubUpdate, GithubAuthUpdate
@@ -14,9 +14,10 @@ from bot.persistence import Persistence
 from bot.utils import decode_first_data_entity, deep_link, reply_data_link_filter
 from bot.webhookupdater import WebhookUpdater
 
-http.client.HTTPConnection.debuglevel = 5
+if DEBUG:
+    http.client.HTTPConnection.debuglevel = 5
 
-logging.basicConfig(level=logging.DEBUG,
+logging.basicConfig(level=logging.DEBUG if DEBUG else logging.INFO,
                     # [%(filename)s:%(lineno)d]
                     format='%(asctime)s %(levelname)-8s %(name)s - %(message)s')
 
@@ -28,7 +29,9 @@ def error_handler(update, context: CallbackContext):
 def start_handler(update: Update, context: CallbackContext):
     msg = update.effective_message
 
+    # For deep linking
     if context.args:
+        # Get the deep link argument and treat it as a command
         args = context.args[0].split('__')
         update.effective_message.text = '/' + ' '.join(args)
         update.effective_message.entities[0].length = len(args[0]) + 1
@@ -136,16 +139,22 @@ def reply_handler(update: Update, context: CallbackContext):
 
 
 if __name__ == '__main__':
+    # Not strictly needed anymore since we no longer have custom persistent data
+    # But since we likely will want it in the future, we keep our custom persistence
     persistence = Persistence(DATABASE_FILE)
+    # Init our very custom webhook handler
     updater = WebhookUpdater(TELEGRAM_BOT_TOKEN,
                              updater_kwargs={'use_context': True,
                                              'persistence': persistence})
     dp = updater.dispatcher
 
+    # See persistence note above
     CallbackContext.github_data = property(lambda self: persistence.github_data)
 
+    # Save data every five (5) min
     dp.job_queue.run_repeating(lambda *_: persistence.flush(), 5 * 60)
 
+    # Telegram updates
     dp.add_handler(CommandHandler('start', start_handler))
     dp.add_handler(CommandHandler('help', help_handler))
     dp.add_handler(CommandHandler('privacy', privacy_handler))
@@ -154,9 +163,11 @@ if __name__ == '__main__':
 
     settings.add_handlers(dp)
 
+    # For commenting on issues/PR/reviews
     dp.add_handler(MessageHandler(Filters.reply & reply_data_link_filter, reply_handler,
                                   channel_post_updates=False, edited_updates=False))
 
+    # Non-telegram updates
     github_handler = GithubHandler(dp)
     dp.add_handler(TypeHandler(GithubUpdate, github_handler.handle_update))
     dp.add_handler(TypeHandler(GithubAuthUpdate, github_handler.handle_auth_update))
