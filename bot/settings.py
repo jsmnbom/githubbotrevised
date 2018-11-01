@@ -33,11 +33,11 @@ def settings_text(update, context):
         if access_token:
             github_user = github_api.get_user(access_token)
 
-            text += ('You are currently logged in as '
+            text += ('🔓 You are currently logged in as '
                      f'<a href="{github_user["html_url"]}">{github_user["login"]} ({github_user["name"]})</a>'
                      '.\n')
         else:
-            text += f'You are currently not logged in.\n'
+            text += f'🔒 You are currently not logged in.\n'
 
     text += '\nNo repositories have been set up for this chat.\n'
 
@@ -114,7 +114,8 @@ def repos_buttons(update, context):
 
 repos_menu = Menu(
     name='repos',
-    text='Please choose a repository from the the list below, or press "New Repository" to add a new repository.',
+    text='🗃️ Repositories\n\nRepositories installed in this chat are shown below. '
+         'Please choose a repository to configure, or press "New Repository" to add a new repository.',
     buttons=repos_buttons
 )
 
@@ -221,7 +222,7 @@ def inline_add_repo(update, context):
                 title='No results.',
                 description='Tab me to learn how to add your repositories.',
                 input_message_content=InputTextMessageContent(
-                    message_text=f'/help add_repo',
+                    message_text=f'/help',
                 )
             ))
 
@@ -230,7 +231,7 @@ def inline_add_repo(update, context):
         switch_pm_text=('Not seeing your repository? Tab here.'
                         if access_token else
                         'You are not logged in. Tab here to continue.'),
-        switch_pm_parameter='help__add_repo',
+        switch_pm_parameter='help',
         cache_time=15,
         is_personal=True,
         next_offset=f'{installation_index-1}|{repo_index}' if results else ''

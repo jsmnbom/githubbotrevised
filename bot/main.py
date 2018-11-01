@@ -1,7 +1,7 @@
 import http.client
 import logging
 
-from telegram import Update, ParseMode, InlineKeyboardMarkup, InlineKeyboardButton
+from telegram import Update, ParseMode, InlineKeyboardMarkup, InlineKeyboardButton, Chat
 from telegram.ext import TypeHandler, CallbackContext, CommandHandler, MessageHandler, Filters
 
 from bot import settings
@@ -11,7 +11,6 @@ from bot.githubapi import github_api
 from bot.githubupdates import GithubUpdate, GithubAuthUpdate
 from bot.menu import reply_menu
 from bot.persistence import Persistence
-from bot.text import HELP_ADD_REPO
 from bot.utils import decode_first_data_entity, deep_link, reply_data_link_filter
 from bot.webhookupdater import WebhookUpdater
 
@@ -36,17 +35,33 @@ def start_handler(update: Update, context: CallbackContext):
         context.update_queue.put(update)
         return
 
-    msg.reply_text(f'Hello, I am {context.bot.name}. I can do things!')
+    msg.reply_text(f'👋 Hello, I am {context.bot.name}.\n'
+                   f'I can notify you about events in your public GitHub repositories. '
+                   f'You can also reply to my messages to post comments to GitHub right from Telegram. '
+                   f'I am an improved version of the telegram provided githubbot.\n\n'
+                   f'Use /settings to get started.')
 
 
 def help_handler(update: Update, context: CallbackContext):
     msg = update.effective_message
+    private = update.effective_chat.type == Chat.PRIVATE
+    steps = [
+        f'First you must allow me access to the repositories in question. To do this, <a href="https://github.com/apps/telegram-githubbot-revised/installations/new">install</a> my <a href="https://github.com/apps/telegram-githubbot-revised">GitHub App</a> on your account or organisation, and make sure that it has access to the desired repositories.',
+        f'Use the command /settings to open my settings interface and press the login button. This way I will know who you are.',
+        f'Add me ({context.bot.name}) to the chat/group in which you would like to receive notifications.',
+        f'In that chat use /settings to add the repositories you would like to receive notifications for.'
+    ]
+    if not private:
+        steps.insert(1, f'Go to a private chat with me, by clicking here: {context.bot.name}.')
+    text = '\n\n'.join(f'{i+1}️⃣ {step}' for i, step in enumerate(steps))
+    msg.reply_text(f'<b>Github notification guide.</b>\n\n{text}\n\n'
+                   f'Note that GitHub Help has more in depth guides on how to install GitHub Apps <a href="https://help.github.com/articles/installing-an-app-in-your-personal-account/#installing-a-github-app-in-your-personal-account">in your personal account</a> or <a href="https://help.github.com/articles/installing-an-app-in-your-organization/#installing-a-github-app-in-your-organization">in your organisation</a> if you are having trouble with step 1.',
+                   reply_markup=InlineKeyboardMarkup([
+                       [InlineKeyboardButton('Add me to a group', url=f'https://telegram.me/{context.bot.username}?startgroup=start')]
+                   ]),
+                   parse_mode=ParseMode.HTML,
+                   disable_web_page_preview=True)
 
-    if context.args and context.args[0] == 'add_repo':
-        msg.reply_text(HELP_ADD_REPO, parse_mode=ParseMode.HTML, disable_web_page_preview=True)
-    else:
-        # TODO: Add proper general help
-        msg.reply_text(f'NYI')
 
 
 def privacy_handler(update: Update, _):
@@ -124,10 +139,10 @@ if __name__ == '__main__':
     dp.add_handler(CommandHandler('login', login_handler))
     dp.add_handler(CommandHandler('test', test_handler))
 
+    settings.add_handlers(dp)
+
     dp.add_handler(MessageHandler(Filters.reply & reply_data_link_filter, reply_handler,
                                   channel_post_updates=False, edited_updates=False))
-
-    settings.add_handlers(dp)
 
     github_handler = GithubHandler(dp)
     dp.add_handler(TypeHandler(GithubUpdate, github_handler.handle_update))
