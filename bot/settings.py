@@ -9,7 +9,7 @@ from bot.menu import Button, Menu, BackButton, reply_menu, MenuHandler, ToggleBu
 from bot.repo import Repo
 from bot.utils import encode_data_link, decode_first_data_entity
 
-BACK = '🡄 Back'
+BACK = '⬅ Back'
 
 
 class InlineQueries(object):
