@@ -42,7 +42,8 @@ def start_handler(update: Update, context: CallbackContext):
                    f'I can notify you about events in your public GitHub repositories. '
                    f'You can also reply to my messages to post comments to GitHub right from Telegram. '
                    f'I am an improved version of the Telegram GitHub Bot.\n\n'
-                   f'Use /settings to get started.')
+                   f'Use /settings to get started.',
+                   disable_notification=True)
 
 
 def help_handler(update: Update, context: CallbackContext):
@@ -64,7 +65,8 @@ def help_handler(update: Update, context: CallbackContext):
                                              url=f'https://telegram.me/{context.bot.username}?startgroup=start')]
                    ]),
                    parse_mode=ParseMode.HTML,
-                   disable_web_page_preview=True)
+                   disable_web_page_preview=True,
+                   disable_notification=True)
 
 
 def privacy_handler(update: Update, context: CallbackContext):
@@ -81,7 +83,8 @@ def privacy_handler(update: Update, context: CallbackContext):
         f'OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.\n\n'
         f'The MIT-licensed source code for GithubBot revised can be found at <a href="https://github.com/jsmnbom/githubbotrevised">GitHub</a>.',
         parse_mode=ParseMode.HTML,
-        disable_web_page_preview=True
+        disable_web_page_preview=True,
+        disable_notification=True
     )
 
 
@@ -120,7 +123,8 @@ def reply_handler(update: Update, context: CallbackContext):
                                   reply_markup=InlineKeyboardMarkup([[
                                       InlineKeyboardButton('Login', url=deep_link(context.bot, 'login'))
                                   ]]),
-                                  parse_mode=ParseMode.HTML)
+                                  parse_mode=ParseMode.HTML,
+                                  disable_notification=True)
         context.job_queue.run_once(delete_job, 30, sent_msg)
         return
 

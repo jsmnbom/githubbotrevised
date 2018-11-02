@@ -81,7 +81,8 @@ class Menu(object):
     def reply(self, update, context):
         context.menu_stack = getattr(context, 'menu_stack', []) + [self.name]
         return update.effective_message.reply_text(
-            **self._attrs(update, context)
+            **self._attrs(update, context),
+            disable_notification=True
         )
 
     def send(self, chat_id, context):
@@ -89,7 +90,8 @@ class Menu(object):
         update = Update(0)
         return context.bot.send_message(
             chat_id,
-            **self._attrs(update, context)
+            **self._attrs(update, context),
+            disable_notification=True
         )
 
     def edit(self, update, context):
@@ -256,6 +258,7 @@ def reply_menu(update, context, menu: Menu):
 
 def send_menu(chat_id, context, menu: Menu):
     return menu.send(chat_id, context)
+
 
 def edit_menu_by_id(chat_id, message_id, context, menu: Menu):
     return menu.edit_by_id(chat_id, message_id, context)
