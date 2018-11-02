@@ -4,6 +4,7 @@ from uuid import uuid4
 from telegram import Chat, InlineQueryResultArticle, InputTextMessageContent, ParseMode
 from telegram.ext import Dispatcher, InlineQueryHandler, CommandHandler
 
+from bot.const import DEFAULT_TRUNCATION_LIMIT
 from bot.github import github_api
 from bot.menu import Button, Menu, BackButton, reply_menu, MenuHandler, ToggleButton, SetButton
 from bot.repo import Repo
@@ -56,8 +57,9 @@ def settings_buttons(update, context):
         else:
             buttons.append(Button('🔑 Login', menu='login'))
     else:
-        buttons.append(Button('👤 User settings', url=f'https://telegram.me/{context.bot.username}?start=settings'))
+        buttons.append(Button('👤 Go to User settings', url=f'https://telegram.me/{context.bot.username}?start=settings'))
 
+    buttons.append(Button('👥 Chat settings', menu='chat'))
     buttons.append(Button('🗃️ Repositories', menu='repos'))
 
     return [[button] for button in buttons]
@@ -172,6 +174,39 @@ repo_menu = Menu(
 )
 
 
+def chat_text(update, context):
+    if update.effective_chat.title:
+        chat = update.effective_chat.title
+    elif update.effective_chat.first_name:
+        chat = f'this chat with {update.effective_chat.first_name}'
+    else:
+        chat = 'this chat'
+    return f'⚙ Settings for {context.bot.name} for {chat}\n\n'
+
+
+def chat_buttons(update, context):
+    truncation_limit = context.chat_data.get('truncation_limit', DEFAULT_TRUNCATION_LIMIT)
+    truncation_limits = [256, 512, 1024, 2048, 4096]
+    truncation_limit_states = [(limit, f'Max notification message length: {limit}') for limit in truncation_limits]
+
+    return [
+        [ToggleButton('truncation_limit', truncation_limit, states=truncation_limit_states)],
+        [BackButton(BACK)]
+    ]
+
+
+def chat_set_data(update, context):
+    context.chat_data[context.key] = context.value
+
+
+chat_settings_menu = Menu(
+    name='chat',
+    text=chat_text,
+    buttons=chat_buttons,
+    set_data=chat_set_data
+)
+
+
 def settings_command(update, context):
     if context.args:
         context.menu_stack = context.args
@@ -265,7 +300,8 @@ def add_handlers(dp: Dispatcher):
     dp.add_handler(MenuHandler(settings_menu, [
         repos_menu,
         repo_menu,
-        login_menu
+        login_menu,
+        chat_settings_menu
     ]))
 
     dp.add_handler(InlineQueryHandler(inline_add_repo, pattern=InlineQueries.add_repo + r'(.*)'))

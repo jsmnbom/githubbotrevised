@@ -4,6 +4,7 @@ from typing import Callable
 from telegram import ParseMode
 from telegram.ext import CallbackContext, Dispatcher
 
+from bot.const import DEFAULT_TRUNCATION_LIMIT
 from bot.githubapi import github_api
 from bot.githubupdates import GithubAuthUpdate, GithubUpdate
 from bot.menu import edit_menu_by_id
@@ -55,13 +56,19 @@ class GithubHandler:
             if 'repos' in chat_data:
                 for repo in chat_data['repos'].values():
                     if repo.id == repo_id:
-                        yield chat_id, repo
+                        yield chat_id, chat_data, repo
 
     def _send(self, repo, text, check_repo: Callable[[Repo], bool], suffix=REPLY_MESSAGE):
-        text = truncate(text, TRUNCATED_MESSAGE, suffix)
+        truncated_text = {}
 
-        for chat_id, repo in self._iter_repos(repo):
+        for chat_id, chat_data, repo in self._iter_repos(repo):
             if check_repo(repo):
+                truncation_limit = chat_data.get('truncation_limit', DEFAULT_TRUNCATION_LIMIT)
+                try:
+                    text = truncated_text[truncation_limit]
+                except KeyError:
+                    text = truncate(text, TRUNCATED_MESSAGE, suffix, max_length=truncation_limit)
+
                 self.dispatcher.bot.send_message(chat_id=chat_id, text=text,
                                                  parse_mode=ParseMode.HTML, disable_web_page_preview=True)
 
