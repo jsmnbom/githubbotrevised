@@ -216,7 +216,8 @@ class GithubHandler:
         text += f'by {sender_link}\n\n'
 
         for page in pages:
-            text += f'<a href="{page["html_url"]}">{page["title"]}</a>'
+            compare_url = f'{page["html_url"]}/_compare/{page["sha"]}'
+            text += f'<a href="{page["html_url"]}">{page["title"]}</a> (<a href="{compare_url}">compare</a>)'
 
         self._send(repo, text, lambda r: r.wiki_pages, suffix='')
 
