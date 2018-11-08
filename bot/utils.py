@@ -96,13 +96,13 @@ class _GithubFilter(Filter):
         in_quote = False
         in_tag = 0
         for token in super().__iter__():
-            if token['type'] == 'StartTag' and token['name'] == 'pre':
-                if not in_tag:
-                    token['data'] = {}
-                    yield {
-                        'data': 'Suggestion:\n',
-                        'type': 'Characters'
-                    }
+            if (not in_tag and token['type'] == 'StartTag' and token['name'] == 'pre'
+                    and token['data'] and 'suggestion' in token['data'][(None, 'lang')]):
+                token['data'] = {}
+                yield {
+                    'data': 'Suggestion:\n',
+                    'type': 'Characters'
+                }
 
             if token['type'] == 'StartTag' and token['name'] == 'li':
                 if not (token['data'] and token['data'].get('class') != 'task-list-item'):
