@@ -37,11 +37,11 @@ TODO: Guide
 
 ## Contributing
 
-TODO: Contributing guide
-TLDR: Contributions (either issues or PRs) are very welcome!
+TODO: Contributing guide  
+TLDR: Contributions (both issues or PRs) are very welcome!
 
 ## License
 
-The source code of this Telegram Bot is provided under the (MIT license)[./LICENSE]. 
+The source code of this Telegram Bot is provided under the [MIT license](./LICENSE). 
 
 
