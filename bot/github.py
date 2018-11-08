@@ -9,7 +9,8 @@ from bot.githubapi import github_api
 from bot.githubupdates import GithubAuthUpdate, GithubUpdate
 from bot.menu import edit_menu_by_id
 from bot.repo import Repo
-from bot.utils import github_cleaner, link, truncate, encode_data_link
+from bot.utils import link, encode_data_link
+from bot.truncator import github_cleaner, truncate
 
 TRUNCATED_MESSAGE = '\n<b>[Truncated message, open on GitHub to read more]</b>'
 REPLY_MESSAGE = '\n\n<i>Reply to this message to post a comment on GitHub (use ! to suppress).</i>'
