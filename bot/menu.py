@@ -95,17 +95,23 @@ class Menu(object):
         )
 
     def edit(self, update, context):
-        return update.effective_message.edit_text(
+        msg = update.effective_message.edit_text(
             **self._attrs(update, context)
         )
+        if update.callback_query:
+            update.callback_query.answer()
+        return msg
 
     def edit_by_id(self, chat_id, message_id, context):
         update = Update(0)
-        return context.bot.edit_message_text(
+        msg = context.bot.edit_message_text(
             chat_id=chat_id,
             message_id=message_id,
             **self._attrs(update, context)
         )
+        if update.callback_query:
+            update.callback_query.answer()
+        return msg
 
     def matches(self, stack, root=False):
         if root:
