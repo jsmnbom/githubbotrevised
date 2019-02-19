@@ -76,10 +76,11 @@ def deep_link(bot, data):
 
 class _ReplyDataLinkFilter(BaseFilter):
     def filter(self, message):
-        for entity in message.reply_to_message.entities:
-            if entity.type == MessageEntity.TEXT_LINK:
-                return entity.url.startswith(URL_BASE)
-            break
+        if message.reply_to_message:
+            for entity in message.reply_to_message.entities:
+                if entity.type == MessageEntity.TEXT_LINK:
+                    return entity.url.startswith(URL_BASE)
+                break
 
 
 reply_data_link_filter = _ReplyDataLinkFilter()
