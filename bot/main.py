@@ -92,11 +92,6 @@ def login_handler(update: Update, context):
     context.menu_stack = ['settings']
     reply_menu(update, context, settings.login_menu)
 
-
-def test_handler(update: Update, context: CallbackContext):
-    pass
-
-
 def delete_job(context: CallbackContext):
     context.job.context.delete()
 
@@ -163,7 +158,6 @@ if __name__ == '__main__':
     dp.add_handler(CommandHandler('help', help_handler))
     dp.add_handler(CommandHandler('privacy', privacy_handler))
     dp.add_handler(CommandHandler('login', login_handler))
-    dp.add_handler(CommandHandler('test', test_handler))
 
     settings.add_handlers(dp)
 
