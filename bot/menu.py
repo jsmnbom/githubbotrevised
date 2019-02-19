@@ -242,10 +242,9 @@ class MenuHandler(Handler):
 
                 return stack, menu, match, action, other
 
-    def handle_update(self, update, dispatcher, check_result):
+    def handle_update(self, update, dispatcher, check_result, context=None):
         stack, menu, match, action, other = check_result
 
-        context = CallbackContext.from_update(update, dispatcher)
         self.collect_additional_context(context, update, dispatcher, (action, stack, other, match))
 
         return menu.handle_update(update, context)
@@ -255,7 +254,7 @@ class MenuHandler(Handler):
         context.menu_action = action
         context.menu_other = other
         context.menu_stack = stack
-        context.match = match
+        context.matches = [match]
 
 
 def reply_menu(update, context, menu: Menu):

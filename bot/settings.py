@@ -305,4 +305,4 @@ def add_handlers(dp: Dispatcher):
     ]))
 
     dp.add_handler(InlineQueryHandler(inline_add_repo, pattern=InlineQueries.add_repo + r'(.*)'))
-    dp.add_handler(CommandHandler('add_repo', add_repo_command, allow_edited=False))
+    dp.add_handler(CommandHandler('add_repo', add_repo_command))

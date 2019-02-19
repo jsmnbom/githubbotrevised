@@ -57,7 +57,7 @@ def help_handler(update: Update, context: CallbackContext):
     ]
     if not private:
         steps.insert(1, f'Go to a private chat with me, by clicking here: {context.bot.name}.')
-    text = '\n\n'.join(f'{i+1}️⃣ {step}' for i, step in enumerate(steps))
+    text = '\n\n'.join(f'{i + 1}️⃣ {step}' for i, step in enumerate(steps))
     msg.reply_text(f'<b>Github notification guide.</b>\n\n{text}\n\n'
                    f'Note that GitHub Help has more in depth guides on how to install GitHub Apps <a href="https://help.github.com/articles/installing-an-app-in-your-personal-account/#installing-a-github-app-in-your-personal-account">in your personal account</a> or <a href="https://help.github.com/articles/installing-an-app-in-your-organization/#installing-a-github-app-in-your-organization">in your organisation</a> if you are having trouble with step 1.',
                    reply_markup=InlineKeyboardMarkup([
@@ -91,6 +91,7 @@ def privacy_handler(update: Update, context: CallbackContext):
 def login_handler(update: Update, context):
     context.menu_stack = ['settings']
     reply_menu(update, context, settings.login_menu)
+
 
 def delete_job(context: CallbackContext):
     context.job.context.delete()
@@ -162,8 +163,7 @@ if __name__ == '__main__':
     settings.add_handlers(dp)
 
     # For commenting on issues/PR/reviews
-    dp.add_handler(MessageHandler(Filters.reply & reply_data_link_filter, reply_handler,
-                                  channel_post_updates=False, edited_updates=False))
+    dp.add_handler(MessageHandler(Filters.reply & reply_data_link_filter, reply_handler))
 
     # Non-telegram updates
     github_handler = GithubHandler(dp)
