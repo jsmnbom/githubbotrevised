@@ -126,14 +126,12 @@ def reply_handler(update: Update, context: CallbackContext):
 
     if comment_type in ('issue', 'pull request'):
         repo, number, author = data
-
-        text = f'@{author} {msg.text_markdown}'
+        text = f'@{author} {msg.text_html}'
 
         github_api.add_issue_comment(repo, number, text, access_token=access_token)
     elif comment_type == 'pull request review comment':
         repo, number, comment_id, author = data
-
-        text = f'@{author} {msg.text_markdown}'
+        text = f'@{author} {msg.text_html}'
 
         github_api.add_review_comment(repo, number, comment_id, text, access_token=access_token)
 
