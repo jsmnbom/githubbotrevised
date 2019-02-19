@@ -201,7 +201,7 @@ class GithubHandler:
             text = f'🔨 <a href="{compare}">{len(commits)} new commits</a> to {repo["full_name"]}:{branch}\n\n'
 
             for commit in commits:
-                text += f'<a href="{commit["url"]}">{commit["id"][:7]}</a>: {commit["message"]} by {commit["author"]["name"]}'
+                text += f'<a href="{commit["url"]}">{commit["id"][:7]}</a>: {commit["message"]} by {commit["author"]["name"]}\n'
 
             self._send(repo, text, lambda r: (r.push_main or r.push) if branch == repo["default_branch"] else r.push,
                        suffix='')
