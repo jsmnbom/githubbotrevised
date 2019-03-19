@@ -1,0 +1,13 @@
+version: '3.0'
+
+services:
+  bot:
+    build: 
+      context: .
+    volumes:
+      - './:/usr/src/app'
+      - 'bot_data:/data'
+
+volumes:
+  bot_data: null
+
