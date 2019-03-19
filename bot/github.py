@@ -34,8 +34,6 @@ class GithubHandler:
 
         access_token = github_api.get_oauth_access_token(update.code, update.raw_state)
 
-        self.logger.debug('Access token for user %s: %s', user_id, access_token)
-
         context.user_data['access_token'] = access_token
 
         from bot.settings import login_menu

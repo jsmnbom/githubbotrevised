@@ -34,7 +34,7 @@ class BaseWebhookHandler(RequestHandler):
         self.process_data(data)
 
     def process_data(self, data: Dict):
-        raise NotImplemented
+        raise NotImplementedError
 
     def validate(self):
         ct_header = self.request.headers.get("Content-Type", None)
