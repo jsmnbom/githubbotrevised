@@ -11,7 +11,7 @@ from tornado.httpserver import HTTPServer
 from tornado.ioloop import IOLoop
 from tornado.web import Application, RequestHandler, HTTPError
 
-from bot.const import GITHUB_WEBHOOK_SECRET, SERVER_HOSTNAME_PATTERN, SERVER_PORT, TELEGRAM_WEBHOOK_URL, HMAC_SECRET
+from bot.const import GITHUB_WEBHOOK_SECRET, SERVER_HOSTNAME_PATTERN, SERVER_PORT, TELEGRAM_WEBHOOK_URL, HMAC_SECRET, DEBUG
 from bot.githubupdates import GithubUpdate, GithubAuthUpdate
 from bot.utils import secure_decode_64, HMACException
 
@@ -145,7 +145,7 @@ class WebhookUpdater(object):
         self.dispatcher = self.updater.dispatcher
         self.update_queue = self.updater.update_queue
 
-        self.app = Application()
+        self.app = Application(debug=DEBUG)
         self.app.add_handlers(SERVER_HOSTNAME_PATTERN, [
             (
                 r'/{}/?'.format(token),
