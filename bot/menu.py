@@ -180,7 +180,7 @@ class ToggleButton(Button):
         if (text is None and states is None) or (text is not None and states is not None):
             raise RuntimeError
         if text is not None:
-            states = ((False, text), (True, '\u2714' + text))
+            states = ((False, text), (True, '☑️' + text))
         if default is None:
             default = states[0][0]
         self.default = default
