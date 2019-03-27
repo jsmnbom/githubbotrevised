@@ -7,7 +7,7 @@ services:
     volumes:
       - './:/usr/src/app'
       - 'bot_data:/data'
-      - './data/private-key.pem:/config/key'
+      - './private-key.pem:/config/key.pem'
     env_file:
       - .env
   localtunnel:

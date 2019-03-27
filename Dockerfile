@@ -6,6 +6,7 @@ VOLUME [ "/data" ]
 VOLUME [ "/config" ]
 
 ENV DATABASE_FILE /data/db.pickle
+ENV SERVER_HOSTNAME_PATTERN=.*
 ENV SERVER_PORT 80
 ENV GITHUB_PRIVATE_KEY_PATH /config/key.pem
 
