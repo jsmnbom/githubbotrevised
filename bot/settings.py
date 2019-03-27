@@ -226,7 +226,6 @@ def inline_add_repo(update, context):
     results = []
     if access_token:
         filtered_repositories = []
-        registered_repos = context.chat_data.setdefault('repos', {})
         search = context.match.group(1).strip()
         installations = github_api.get_installations_for_user(access_token)
         for installation_index, installation in enumerate(installations):
@@ -235,7 +234,7 @@ def inline_add_repo(update, context):
             repositories = github_api.get_repositories_for_installation(installation['id'],
                                                                         access_token)
             for repo_index, repo in enumerate(repositories):
-                if repo_index <= repo_offset or repo['id'] in registered_repos:
+                if repo_index <= repo_offset:
                     continue
                 if repo['full_name'].startswith(search) or repo['name'].startswith(search):
                     filtered_repositories.append(repo)
