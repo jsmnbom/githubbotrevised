@@ -7,6 +7,18 @@ services:
     volumes:
       - './:/usr/src/app'
       - 'bot_data:/data'
+      - './data/private-key.pem:/config/key'
+    env_file:
+      - .env
+  localtunnel:
+    image: kaixhin/localtunnel
+    command:
+      - '80'
+      - '--local-host'
+      - 'bot'
+      - '--subdomain'
+      - '${SERVER_SUBDOMAIN}'
+    restart: always
 
 volumes:
   bot_data: null
