@@ -57,7 +57,8 @@ def settings_buttons(update, context):
         else:
             buttons.append(Button('🔑 Login', menu='login'))
     else:
-        buttons.append(Button('👤 Go to User settings', url=f'https://telegram.me/{context.bot.username}?start=settings'))
+        buttons.append(
+            Button('👤 Go to User settings', url=f'https://telegram.me/{context.bot.username}?start=settings'))
 
     buttons.append(Button('👥 Chat settings', menu='chat'))
     buttons.append(Button('🗃️ Repositories', menu='repos'))
@@ -150,7 +151,7 @@ def repo_buttons(update, context):
         [ToggleButton('wiki_pages', value=repo.wiki_pages, text='Wiki page updated')],
         [ToggleButton('push', value=repo.push, text='Commits pushed to any branch')],
         [ToggleButton('push_main', value=repo.push_main, text='Commits pushed to default branch')],
-        [SetButton('remove', None, '❌ Remove')],
+        [Button('❌ Remove', menu='repo_remove')],
         [BackButton(BACK)]
     ]
 
@@ -158,11 +159,8 @@ def repo_buttons(update, context):
 def repo_set_data(update, context):
     repo_id = int(context.match.group(1))
 
-    if context.key == 'remove':
-        del context.chat_data['repos'][repo_id]
-    else:
-        repo = context.chat_data['repos'][repo_id]
-        setattr(repo, context.key, context.value)
+    repo = context.chat_data['repos'][repo_id]
+    setattr(repo, context.key, context.value)
 
 
 repo_menu = Menu(
@@ -171,6 +169,41 @@ repo_menu = Menu(
     text=repo_text,
     buttons=repo_buttons,
     set_data=repo_set_data
+)
+
+
+def repo_remove_text(_, context):
+    try:
+        repo = context.chat_data['repos'][int(context.menu_stack[-2])]
+    except KeyError:
+        return 'Repository removed successfully.'
+
+    return ('Are you sure you want to remove '
+            f'<b>{repo.name}</b> '
+            f'from this chat\'s list of repositories?')
+
+
+def repo_remove_buttons(_, context):
+    try:
+        repo: Repo = context.chat_data['repos'][int(context.menu_stack[-2])]
+    except KeyError:
+        return [[BackButton('OK', depth=2)]]
+
+    return [
+        [SetButton(repo.id, None, '❌️ Yes, remove repository.')],
+        [BackButton(BACK[0] + ' No, go back.')]
+    ]
+
+
+def repo_remove_set_data(_, context):
+    del context.chat_data['repos'][int(context.menu_stack[-2])]
+
+
+repo_remove_menu = Menu(
+    name='repo_remove',
+    text=repo_remove_text,
+    buttons=repo_remove_buttons,
+    set_data=repo_remove_set_data
 )
 
 
@@ -301,7 +334,8 @@ def add_handlers(dp: Dispatcher):
         repos_menu,
         repo_menu,
         login_menu,
-        chat_settings_menu
+        chat_settings_menu,
+        repo_remove_menu
     ]))
 
     dp.add_handler(InlineQueryHandler(inline_add_repo, pattern=InlineQueries.add_repo + r'(.*)'))
