@@ -166,11 +166,12 @@ class Button(object):
 
 
 class BackButton(Button):
-    def __init__(self, text):
+    def __init__(self, text, depth=1):
         super().__init__(text)
+        self.depth = depth
 
     def _callback_data(self, update, context):
-        return Action.GOTO, context.menu_stack[:-1]
+        return Action.GOTO, context.menu_stack[:-self.depth]
 
 
 class ToggleButton(Button):
