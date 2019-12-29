@@ -1,7 +1,7 @@
 import logging
 from typing import Callable
 
-from telegram import ParseMode
+from telegram import ParseMode, TelegramError
 from telegram.ext import CallbackContext, Dispatcher
 
 from bot.const import DEFAULT_TRUNCATION_LIMIT
@@ -68,8 +68,11 @@ class GithubHandler:
                 except KeyError:
                     text = truncate(text, TRUNCATED_MESSAGE, suffix, max_length=truncation_limit)
 
-                self.dispatcher.bot.send_message(chat_id=chat_id, text=text,
-                                                 parse_mode=ParseMode.HTML, disable_web_page_preview=True)
+                try:
+                    self.dispatcher.bot.send_message(chat_id=chat_id, text=text,
+                                                     parse_mode=ParseMode.HTML, disable_web_page_preview=True)
+                except TelegramError:
+                    logging.error('error while sending github update', exc_info=1)
 
     def issues(self, update, _):
         # Issue opened, edited, closed, reopened, assigned, unassigned, labeled,
