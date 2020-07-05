@@ -64,12 +64,12 @@ class GithubHandler:
             if check_repo(repo):
                 truncation_limit = chat_data.get('truncation_limit', DEFAULT_TRUNCATION_LIMIT)
                 try:
-                    text = truncated_text[truncation_limit]
+                    message_text = truncated_text[truncation_limit]
                 except KeyError:
-                    text = truncate(text, TRUNCATED_MESSAGE, suffix, max_length=truncation_limit)
+                    message_text = truncate(text, TRUNCATED_MESSAGE, suffix, max_length=truncation_limit)
 
                 try:
-                    self.dispatcher.bot.send_message(chat_id=chat_id, text=text,
+                    self.dispatcher.bot.send_message(chat_id=chat_id, text=message_text,
                                                      parse_mode=ParseMode.HTML, disable_web_page_preview=True)
                 except TelegramError:
                     logging.error('error while sending github update', exc_info=1)
