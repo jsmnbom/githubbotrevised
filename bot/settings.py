@@ -259,7 +259,7 @@ def inline_add_repo(update, context):
             results.append(InlineQueryResultArticle(
                 id=uuid4(),
                 title='No results.',
-                description='Tab me to learn how to add your repositories.',
+                description='Tap me to learn how to add your repositories.',
                 input_message_content=InputTextMessageContent(
                     message_text=f'/help',
                 )
@@ -269,7 +269,7 @@ def inline_add_repo(update, context):
         results,
         switch_pm_text=('Not seeing your repository? Tab here.'
                         if access_token else
-                        'You are not logged in. Tab here to continue.'),
+                        'You are not logged in. Tap here to continue.'),
         switch_pm_parameter='help',
         cache_time=15,
         is_personal=True,
