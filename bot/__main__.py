@@ -5,7 +5,7 @@ from telegram import Update, ParseMode, InlineKeyboardMarkup, InlineKeyboardButt
 from telegram.ext import TypeHandler, CallbackContext, CommandHandler, MessageHandler, Filters
 
 from bot import settings
-from bot.const import TELEGRAM_BOT_TOKEN, DATABASE_FILE, DEBUG
+from bot.const import TELEGRAM_BOT_TOKEN, DATABASE_FILE, DEBUG, GITHUB_APP_NAME
 from bot.github import GithubHandler
 from bot.githubapi import github_api
 from bot.githubupdates import GithubUpdate, GithubAuthUpdate
@@ -50,7 +50,7 @@ def help_handler(update: Update, context: CallbackContext):
     msg = update.effective_message
     private = update.effective_chat.type == Chat.PRIVATE
     steps = [
-        f'First you must allow me access to the repositories in question. To do this, <a href="https://github.com/apps/telegram-githubbot-revised/installations/new">install</a> my <a href="https://github.com/apps/telegram-githubbot-revised">GitHub App</a> on your account or organisation, and make sure that it has access to the desired repositories.',
+        f'First you must allow me access to the repositories in question. To do this, <a href="https://github.com/apps/{GITHUB_APP_NAME}/installations/new">install</a> my <a href="https://github.com/apps/telegram-githubbot-revised">GitHub App</a> on your account or organisation, and make sure that it has access to the desired repositories.',
         f'Use the command /settings to open my settings interface and press the login button. This way I will know who you are.',
         f'Add me ({context.bot.name}) to the chat/group in which you would like to receive notifications.',
         f'In that chat use /settings to add the repositories you would like to receive notifications for.'
