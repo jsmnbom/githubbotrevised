@@ -6,9 +6,9 @@ from typing import Any
 
 import base65536
 from telegram import MessageEntity
-from telegram.ext import BaseFilter
+from telegram.ext.filters import MessageFilter
 
-from bot.const import HMAC_SECRET
+from const import HMAC_SECRET
 
 URL_BASE = 'https://ghbot.test/'
 
@@ -74,7 +74,7 @@ def deep_link(bot, data):
     return f'https://telegram.me/{bot.username}?start={data}'
 
 
-class _ReplyDataLinkFilter(BaseFilter):
+class _ReplyDataLinkFilter(MessageFilter):
     def filter(self, message):
         if message.reply_to_message:
             for entity in message.reply_to_message.entities:

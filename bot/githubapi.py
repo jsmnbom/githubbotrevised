@@ -7,9 +7,9 @@ import requests
 from cachecontrol import CacheControl
 from requests.auth import AuthBase
 
-from bot.const import (GITHUB_PRIVATE_KEY_PATH, GITHUB_APP_ID, HMAC_SECRET, GITHUB_OAUTH_CLIENT_ID,
+from const import (GITHUB_PRIVATE_KEY_PATH, GITHUB_APP_ID, HMAC_SECRET, GITHUB_OAUTH_CLIENT_ID,
                        GITHUB_OAUTH_CLIENT_SECRET, GITHUB_OAUTH_REDIRECT_URI)
-from bot.utils import secure_encode_64
+from utils import secure_encode_64
 
 GITHUB_API_ACCEPT = {'Accept': 'application/vnd.github.machine-man-preview+json'}
 

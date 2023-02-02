@@ -1,5 +1,5 @@
 tornado
-python-telegram-bot==12.0.0b1
+python-telegram-bot==20.0
 base65536
 PyJWT
 requests

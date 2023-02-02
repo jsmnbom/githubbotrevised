@@ -1,16 +1,17 @@
 import logging
 from typing import Callable
 
-from telegram import ParseMode, TelegramError
-from telegram.ext import CallbackContext, Dispatcher
+from telegram.constants import ParseMode
+from telegram.error import TelegramError
+from telegram.ext import CallbackContext, Application
 
-from bot.const import DEFAULT_TRUNCATION_LIMIT
-from bot.githubapi import github_api
-from bot.githubupdates import GithubAuthUpdate, GithubUpdate
-from bot.menu import edit_menu_by_id
-from bot.repo import Repo
-from bot.utils import link, encode_data_link
-from bot.truncator import github_cleaner, truncate
+from const import DEFAULT_TRUNCATION_LIMIT
+from githubapi import github_api
+from githubupdates import GithubAuthUpdate, GithubUpdate
+from menu import edit_menu_by_id
+from repo import Repo
+from utils import link, encode_data_link
+from truncator import github_cleaner, truncate
 
 TRUNCATED_MESSAGE = '\n<b>[Truncated message, open on GitHub to read more]</b>'
 REPLY_MESSAGE = '\n\n<i>Reply to this message to post a comment on GitHub (use ! to suppress).</i>'
@@ -22,19 +23,17 @@ def render_github_markdown(markdown, context: str):
 
 
 class GithubHandler:
-    def __init__(self, dispatcher: Dispatcher):
-        self.dispatcher = dispatcher
+    def __init__(self, application: Application):
+        self.application = application
         self.logger = logging.getLogger(self.__class__.__qualname__)
 
-    def handle_auth_update(self, update: GithubAuthUpdate, context: CallbackContext):
+    async def handle_auth_update(self, update: GithubAuthUpdate, context: CallbackContext.DEFAULT_TYPE):
         user_id = update.state[0]
         message_id = update.state[1]
-        # noinspection PyProtectedMember
-        context.user_data = self.dispatcher.user_data[user_id]
 
         access_token = github_api.get_oauth_access_token(update.code, update.raw_state)
 
-        context.user_data['access_token'] = access_token
+        context.bot_data[user_id]['access_token'] = access_token
 
         from bot.settings import login_menu
         context.menu_stack = ['settings', 'login']
@@ -51,13 +50,13 @@ class GithubHandler:
 
     def _iter_repos(self, repository):
         repo_id = repository['id']
-        for chat_id, chat_data in self.dispatcher.chat_data.items():
+        for chat_id, chat_data in self.application.chat_data.items():
             if 'repos' in chat_data:
                 for repo in chat_data['repos'].values():
                     if repo.id == repo_id:
                         yield chat_id, chat_data, repo
 
-    def _send(self, repo, text, check_repo: Callable[[Repo], bool], suffix=REPLY_MESSAGE):
+    async def _send(self, repo, text, check_repo: Callable[[Repo], bool], suffix=REPLY_MESSAGE):
         truncated_text = {}
 
         for chat_id, chat_data, repo in self._iter_repos(repo):
@@ -69,12 +68,12 @@ class GithubHandler:
                     message_text = truncate(text, TRUNCATED_MESSAGE, suffix, max_length=truncation_limit)
 
                 try:
-                    self.dispatcher.bot.send_message(chat_id=chat_id, text=message_text,
+                    await self.application.bot.send_message(chat_id=chat_id, text=message_text,
                                                      parse_mode=ParseMode.HTML, disable_web_page_preview=True)
                 except TelegramError:
                     logging.error('error while sending github update', exc_info=1)
 
-    def issues(self, update, _):
+    async def issues(self, update, _):
         # Issue opened, edited, closed, reopened, assigned, unassigned, labeled,
         # unlabeled, milestoned, or demilestoned.
         # TODO: Possibly support editing, closing, reopening, etc. of issues
@@ -90,9 +89,9 @@ class GithubHandler:
             data_link = encode_data_link(('issue', repo['full_name'], issue['number'], author['login']))
             text = f'{data_link}🐛 New issue {issue_link}\nby {author_link}\n\n{text}'
 
-            self._send(repo, text, lambda r: r.issues)
+            await self._send(repo, text, lambda r: r.issues)
 
-    def issue_comment(self, update, context):
+    async def issue_comment(self, update, _):
         # Any time a comment on an issue or pull request is created, edited, or deleted.
         # TODO: Possibly support editing and closing of comments?
         if update.payload['action'] == 'created':
@@ -110,9 +109,9 @@ class GithubHandler:
                                           repo['full_name'], issue['number'], author['login']))
             text = f'{data_link}💬 New comment on {issue_link}\nby {author_link}\n\n{text}'
 
-            self._send(repo, text, lambda r: r.pull_comments if is_pull_request else r.issue_comments)
+            await self._send(repo, text, lambda r: r.pull_comments if is_pull_request else r.issue_comments)
 
-    def pull_request(self, update, context):
+    async def pull_request(self, update, _):
         # Pull request opened, closed, reopened, edited, assigned, unassigned, review requested,
         # review request removed, labeled, unlabeled, or synchronized.
         # TODO: Possibly support closed, reopened, edited, assigned etc.
@@ -129,9 +128,9 @@ class GithubHandler:
             data_link = encode_data_link(('pull request', repo['full_name'], pull_request['number'], author['login']))
             text = f'{data_link}🔌 New pull request {pull_request_link}\nby {author_link}\n\n{text}'
 
-            self._send(repo, text, lambda r: r.pulls)
+            await self._send(repo, text, lambda r: r.pulls)
 
-    def pull_request_review(self, update, context):
+    async def pull_request_review(self, update, _):
         # Pull request review submitted, edited, or dismissed.
         # TODO: Possibly support edited and dismissed?
         if update.payload['action'] == 'submitted':
@@ -162,9 +161,9 @@ class GithubHandler:
                     emoji = '‼️'
 
                 text = f'{data_link}{emoji} New pull request review {review_link}\n{state} by {author_link}\n\n{text}'
-                self._send(repo, text, lambda r: r.pull_reviews)
+                await self._send(repo, text, lambda r: r.pull_reviews)
 
-    def pull_request_review_comment(self, update, context):
+    async def pull_request_review_comment(self, update, _):
         # Pull request diff comment created, edited, or deleted.
         if update.payload['action'] == 'created':
             pull_request = update.payload['pull_request']
@@ -186,9 +185,9 @@ class GithubHandler:
                                           author['login'],))
             text = f'{data_link}💬 New pull request review comment {issue_link}\nby {author_link}\n{diff_hunk}\n\n{text}'
 
-            self._send(repo, text, lambda r: r.pull_review_comments)
+            await self._send(repo, text, lambda r: r.pull_review_comments)
 
-    def push(self, update, context):
+    async def push(self, update, _):
         # Triggered on a push to a repository branch.
         # Branch pushes and repository tag pushes also trigger webhook push events.
         commits = update.payload['commits']
@@ -204,10 +203,10 @@ class GithubHandler:
             for commit in commits:
                 text += f'<a href="{commit["url"]}">{commit["id"][:7]}</a>: {commit["message"]} by {commit["author"]["name"]}\n'
 
-            self._send(repo, text, lambda r: (r.push_main or r.push) if branch == repo["default_branch"] else r.push,
+            await self._send(repo, text, lambda r: (r.push_main or r.push) if branch == repo["default_branch"] else r.push,
                        suffix='')
 
-    def gollum(self, update, context):
+    async def gollum(self, update, _):
         # Wiki page is created or updated.
         pages = update.payload['pages']
         repo = update.payload['repository']
@@ -221,9 +220,9 @@ class GithubHandler:
             compare_url = f'{page["html_url"]}/_compare/{page["sha"]}'
             text += f'<a href="{page["html_url"]}">{page["title"]}</a> (<a href="{compare_url}">compare</a>)\n'
 
-        self._send(repo, text, lambda r: r.wiki_pages, suffix='')
+        await self._send(repo, text, lambda r: r.wiki_pages, suffix='')
 
-    def commit_comment(self, update, context):
+    async def commit_comment(self, update, _):
         if update.payload['action'] == 'created':
             repo = update.payload['repository']
             comment = update.payload['comment']
@@ -243,7 +242,7 @@ class GithubHandler:
 
             text += f'\n\n{comment["body"]}'
 
-            self._send(repo, text, lambda r: r.commit_comments, suffix='')
+            await self._send(repo, text, lambda r: r.commit_comments, suffix='')
 
     # def integration_installation_repositories(self, update, context):
     #     new_repos = [{'id': repo['id'], 'full_name': repo['full_name']} for repo in

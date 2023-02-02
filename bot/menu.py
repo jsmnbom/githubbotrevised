@@ -1,10 +1,10 @@
 import re
 from collections import OrderedDict
 
-from telegram import InlineKeyboardMarkup, InlineKeyboardButton, Update, ParseMode
-from telegram.ext import CallbackContext, Handler
-
-from bot.utils import encode_data_link, decode_first_data_entity
+from telegram import InlineKeyboardMarkup, InlineKeyboardButton, Update
+from telegram.constants import ParseMode
+from telegram.ext import BaseHandler
+from utils import encode_data_link, decode_first_data_entity
 
 SEPARATOR = '/'
 
@@ -56,12 +56,12 @@ class Menu(object):
                 buttons[-1].append(inline_button)
         return InlineKeyboardMarkup(buttons), callback_data
 
-    def handle_update(self, update, context):
+    async def handle_update(self, update, context):
         if context.menu_action == Action.SET:
             context.key, context.value = context.menu_other
             self._set_data(update, context)
 
-        return self.edit(update, context)
+        return await self.edit(update, context)
 
     def _attrs(self, update, context):
         text = self.text(update, context)
@@ -78,39 +78,39 @@ class Menu(object):
             'disable_web_page_preview': True
         }
 
-    def reply(self, update, context):
+    async def reply(self, update, context):
         context.menu_stack = getattr(context, 'menu_stack', []) + [self.name]
-        return update.effective_message.reply_text(
+        return await update.effective_message.reply_text(
             **self._attrs(update, context),
             disable_notification=True
         )
 
-    def send(self, chat_id, context):
+    async def send(self, chat_id, context):
         context.menu_stack = getattr(context, 'menu_stack', []) + [self.name]
         update = Update(0)
-        return context.bot.send_message(
+        return await context.bot.send_message(
             chat_id,
             **self._attrs(update, context),
             disable_notification=True
         )
 
-    def edit(self, update, context):
-        msg = update.effective_message.edit_text(
+    async def edit(self, update, context):
+        msg = await update.effective_message.edit_text(
             **self._attrs(update, context)
         )
         if update.callback_query:
-            update.callback_query.answer()
+            await update.callback_query.answer()
         return msg
 
-    def edit_by_id(self, chat_id, message_id, context):
+    async def edit_by_id(self, chat_id, message_id, context):
         update = Update(0)
-        msg = context.bot.edit_message_text(
+        msg = await context.bot.edit_message_text(
             chat_id=chat_id,
             message_id=message_id,
             **self._attrs(update, context)
         )
         if update.callback_query:
-            update.callback_query.answer()
+            await update.callback_query.answer()
         return msg
 
     def matches(self, stack, root=False):
@@ -209,7 +209,7 @@ class SetButton(Button):
         return Action.SET, context.menu_stack, self.key, self.value
 
 
-class MenuHandler(Handler):
+class MenuHandler(BaseHandler):
     def __init__(self, root_menu, menus):
         if root_menu not in menus:
             menus.insert(0, root_menu)
@@ -242,14 +242,14 @@ class MenuHandler(Handler):
 
                 return stack, menu, match, action, other
 
-    def handle_update(self, update, dispatcher, check_result, context=None):
+    def handle_update(self, update, check_result, context=None):
         stack, menu, match, action, other = check_result
 
-        self.collect_additional_context(context, update, dispatcher, (action, stack, other, match))
+        self.collect_additional_context(context, (action, stack, other, match))
 
         return menu.handle_update(update, context)
 
-    def collect_additional_context(self, context, update, dispatcher, check_result):
+    def collect_additional_context(self, context, check_result):
         action, stack, other, match = check_result
         context.menu_action = action
         context.menu_other = other
@@ -257,13 +257,13 @@ class MenuHandler(Handler):
         context.matches = [match]
 
 
-def reply_menu(update, context, menu: Menu):
-    return menu.reply(update, context)
+async def reply_menu(update, context, menu: Menu):
+    return await menu.reply(update, context)
 
 
-def send_menu(chat_id, context, menu: Menu):
-    return menu.send(chat_id, context)
+async def send_menu(chat_id, context, menu: Menu):
+    return await menu.send(chat_id, context)
 
 
-def edit_menu_by_id(chat_id, message_id, context, menu: Menu):
+async def edit_menu_by_id(chat_id, message_id, context, menu: Menu):
     return menu.edit_by_id(chat_id, message_id, context)

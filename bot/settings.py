@@ -1,14 +1,15 @@
 from itertools import zip_longest
 from uuid import uuid4
 
-from telegram import Chat, InlineQueryResultArticle, InputTextMessageContent, ParseMode
-from telegram.ext import Dispatcher, InlineQueryHandler, CommandHandler
+from telegram import Chat, InlineQueryResultArticle, InputTextMessageContent
+from telegram.constants import ParseMode
+from telegram.ext import Application, InlineQueryHandler, CommandHandler
 
-from bot.const import DEFAULT_TRUNCATION_LIMIT
-from bot.github import github_api
-from bot.menu import Button, Menu, BackButton, reply_menu, MenuHandler, ToggleButton, SetButton
-from bot.repo import Repo
-from bot.utils import encode_data_link, decode_first_data_entity
+from const import DEFAULT_TRUNCATION_LIMIT
+from github import github_api
+from menu import Button, Menu, BackButton, reply_menu, MenuHandler, ToggleButton, SetButton
+from repo import Repo
+from utils import encode_data_link, decode_first_data_entity
 
 BACK = '⬅ Back'
 
@@ -122,7 +123,7 @@ repos_menu = Menu(
 )
 
 
-def repo_text(update, context):
+def repo_text(_, context):
     try:
         repo = context.chat_data['repos'][int(context.match.group(1))]
     except KeyError:
@@ -133,7 +134,7 @@ def repo_text(update, context):
             f'or press the remove button to stop receiving notifications for it.')
 
 
-def repo_buttons(update, context):
+def repo_buttons(_, context):
     try:
         repo: Repo = context.chat_data['repos'][int(context.match.group(1))]
     except KeyError:
@@ -155,7 +156,7 @@ def repo_buttons(update, context):
     ]
 
 
-def repo_set_data(update, context):
+def repo_set_data(_, context):
     repo_id = int(context.match.group(1))
 
     if context.key == 'remove':
@@ -184,7 +185,7 @@ def chat_text(update, context):
     return f'⚙ Settings for {context.bot.name} for {chat}\n\n'
 
 
-def chat_buttons(update, context):
+def chat_buttons(_, context):
     truncation_limit = context.chat_data.get('truncation_limit', DEFAULT_TRUNCATION_LIMIT)
     truncation_limits = [256, 512, 1024, 2048, 4096]
     truncation_limit_states = [(limit, f'Max notification message length: {limit}') for limit in truncation_limits]
@@ -195,7 +196,7 @@ def chat_buttons(update, context):
     ]
 
 
-def chat_set_data(update, context):
+def chat_set_data(_, context):
     context.chat_data[context.key] = context.value
 
 
@@ -207,11 +208,11 @@ chat_settings_menu = Menu(
 )
 
 
-def settings_command(update, context):
+async def settings_command(update, context):
     if context.args:
         context.menu_stack = context.args
 
-    reply_menu(update, context, settings_menu)
+    await reply_menu(update, context, settings_menu)
 
 
 def inline_add_repo(update, context):
@@ -294,15 +295,15 @@ def add_repo_command(update, context):
     reply_menu(update, context, repos_menu)
 
 
-def add_handlers(dp: Dispatcher):
-    dp.add_handler(CommandHandler(('settings', 'options', 'config'), settings_command))
+def add_handlers(application: Application):
+    application.add_handler(CommandHandler(('settings', 'options', 'config'), settings_command))
 
-    dp.add_handler(MenuHandler(settings_menu, [
+    application.add_handler(MenuHandler(settings_menu, [
         repos_menu,
         repo_menu,
         login_menu,
         chat_settings_menu
     ]))
 
-    dp.add_handler(InlineQueryHandler(inline_add_repo, pattern=InlineQueries.add_repo + r'(.*)'))
-    dp.add_handler(CommandHandler('add_repo', add_repo_command))
+    application.add_handler(InlineQueryHandler(inline_add_repo, pattern=InlineQueries.add_repo + r'(.*)'))
+    application.add_handler(CommandHandler('add_repo', add_repo_command))

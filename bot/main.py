@@ -1,18 +1,16 @@
 import http.client
 import logging
 
-from telegram import Update, ParseMode, InlineKeyboardMarkup, InlineKeyboardButton, Chat
-from telegram.ext import TypeHandler, CallbackContext, CommandHandler, MessageHandler, Filters
-
-from bot import settings
-from bot.const import TELEGRAM_BOT_TOKEN, DATABASE_FILE, DEBUG
-from bot.github import GithubHandler
-from bot.githubapi import github_api
-from bot.githubupdates import GithubUpdate, GithubAuthUpdate
-from bot.menu import reply_menu
-from bot.persistence import Persistence
-from bot.utils import decode_first_data_entity, deep_link, reply_data_link_filter
-from bot.webhookupdater import WebhookUpdater
+from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton, Chat
+from telegram.constants import ParseMode
+from telegram.ext import TypeHandler, CallbackContext, CommandHandler, MessageHandler, ApplicationBuilder, PicklePersistence
+import settings
+from const import TELEGRAM_BOT_TOKEN, DATABASE_FILE, DEBUG
+from github import GithubHandler
+from githubapi import github_api
+from githubupdates import GithubUpdate, GithubAuthUpdate
+from menu import reply_menu
+from utils import decode_first_data_entity, deep_link, reply_data_link_filter
 
 if DEBUG:
     http.client.HTTPConnection.debuglevel = 5
@@ -26,7 +24,7 @@ def error_handler(update, context: CallbackContext):
     logging.warning('Update "%s" caused error "%s"' % (update, context.error))
 
 
-def start_handler(update: Update, context: CallbackContext):
+async def start_handler(update: Update, context: CallbackContext.DEFAULT_TYPE):
     msg = update.effective_message
 
     # For deep linking
@@ -38,7 +36,7 @@ def start_handler(update: Update, context: CallbackContext):
         context.update_queue.put(update)
         return
 
-    msg.reply_text(f'👋 Hello, I am {context.bot.name}.\n'
+    await msg.reply_text(f'👋 Hello, I am {context.bot.name}.\n'
                    f'I can notify you about events in your public GitHub repositories. '
                    f'You can also reply to my messages to post comments to GitHub right from Telegram. '
                    f'I am an improved version of the Telegram GitHub Bot.\n\n'
@@ -46,7 +44,7 @@ def start_handler(update: Update, context: CallbackContext):
                    disable_notification=True)
 
 
-def help_handler(update: Update, context: CallbackContext):
+async def help_handler(update: Update, context: CallbackContext.DEFAULT_TYPE):
     msg = update.effective_message
     private = update.effective_chat.type == Chat.PRIVATE
     steps = [
@@ -58,7 +56,7 @@ def help_handler(update: Update, context: CallbackContext):
     if not private:
         steps.insert(1, f'Go to a private chat with me, by clicking here: {context.bot.name}.')
     text = '\n\n'.join(f'{i + 1}️⃣ {step}' for i, step in enumerate(steps))
-    msg.reply_text(f'<b>Github notification guide.</b>\n\n{text}\n\n'
+    await msg.reply_text(f'<b>Github notification guide.</b>\n\n{text}\n\n'
                    f'Note that GitHub Help has more in depth guides on how to install GitHub Apps <a href="https://help.github.com/articles/installing-an-app-in-your-personal-account/#installing-a-github-app-in-your-personal-account">in your personal account</a> or <a href="https://help.github.com/articles/installing-an-app-in-your-organization/#installing-a-github-app-in-your-organization">in your organisation</a> if you are having trouble with step 1.',
                    reply_markup=InlineKeyboardMarkup([
                        [InlineKeyboardButton('Add me to a group',
@@ -69,9 +67,9 @@ def help_handler(update: Update, context: CallbackContext):
                    disable_notification=True)
 
 
-def privacy_handler(update: Update, context: CallbackContext):
+async def privacy_handler(update: Update, context: CallbackContext):
     msg = update.effective_message
-    msg.reply_text(
+    await msg.reply_text(
         f'🔏 Privacy policy for {context.bot.name}\n\n'
         f'GithubBot Revised is an open source bot built by <a href="https://telegram.me/jsmnbom">Jasmin Bom</a>.\n\n'
         f'GithubBot revised stores GitHub login tokens - if you logout they will be deleted from the server.\n'
@@ -88,16 +86,16 @@ def privacy_handler(update: Update, context: CallbackContext):
     )
 
 
-def login_handler(update: Update, context):
+async def login_handler(update: Update, context):
     context.menu_stack = ['settings']
     reply_menu(update, context, settings.login_menu)
 
 
-def delete_job(context: CallbackContext):
-    context.job.context.delete()
+async def delete_job(context: CallbackContext.DEFAULT_TYPE):
+    await context.job.data.delete()
 
 
-def reply_handler(update: Update, context: CallbackContext):
+async def reply_handler(update: Update, context: CallbackContext.DEFAULT_TYPE):
     msg = update.effective_message
 
     if msg.text[0] == '!':
@@ -113,7 +111,7 @@ def reply_handler(update: Update, context: CallbackContext):
     access_token = context.user_data.get('access_token')
 
     if not access_token:
-        sent_msg = msg.reply_text(f'Cannot reply to {comment_type}, since you are not logged in. '
+        sent_msg = await msg.reply_text(f'Cannot reply to {comment_type}, since you are not logged in. '
                                   f'Press button below to go to a private chat with me and login.\n\n'
                                   f'<i>This message will self destruct in 30 sec.</i>',
                                   reply_markup=InlineKeyboardMarkup([[
@@ -139,35 +137,40 @@ def reply_handler(update: Update, context: CallbackContext):
 if __name__ == '__main__':
     # Not strictly needed anymore since we no longer have custom persistent data
     # But since we likely will want it in the future, we keep our custom persistence
-    persistence = Persistence(DATABASE_FILE)
+    persistence = PicklePersistence(DATABASE_FILE)
     # Init our very custom webhook handler
-    updater = WebhookUpdater(TELEGRAM_BOT_TOKEN,
-                             updater_kwargs={'use_context': True,
-                                             'persistence': persistence})
-    dp = updater.dispatcher
+    application = ApplicationBuilder().token(TELEGRAM_BOT_TOKEN).persistence(persistence).build()
 
     # See persistence note above
-    CallbackContext.github_data = property(lambda self: persistence.github_data)
+    CallbackContext.github_data = property(lambda _: persistence.github_data)
 
     # Save data every five (5) min
-    dp.job_queue.run_repeating(lambda *_: persistence.flush(), 5 * 60)
+    application.job_queue.run_repeating(lambda *_: persistence.flush(), 5 * 60)
 
     # Telegram updates
-    dp.add_handler(CommandHandler('start', start_handler))
-    dp.add_handler(CommandHandler('help', help_handler))
-    dp.add_handler(CommandHandler('privacy', privacy_handler))
-    dp.add_handler(CommandHandler('login', login_handler))
+    application.add_handler(CommandHandler('start', start_handler))
+    application.add_handler(CommandHandler('help', help_handler))
+    application.add_handler(CommandHandler('privacy', privacy_handler))
+    application.add_handler(CommandHandler('login', login_handler))
 
-    settings.add_handlers(dp)
+    settings.add_handlers(application)
 
     # For commenting on issues/PR/reviews
-    dp.add_handler(MessageHandler(Filters.reply & reply_data_link_filter, reply_handler))
+    from telegram.ext.filters import MessageFilter
+
+    class FilterReply(MessageFilter):
+        def filter(self, message):
+            return True if message.reply_to_message else False
+
+    filter_reply = FilterReply()
+
+    application.add_handler(MessageHandler(filter_reply & reply_data_link_filter, reply_handler))
 
     # Non-telegram updates
-    github_handler = GithubHandler(dp)
-    dp.add_handler(TypeHandler(GithubUpdate, github_handler.handle_update))
-    dp.add_handler(TypeHandler(GithubAuthUpdate, github_handler.handle_auth_update))
+    github_handler = GithubHandler(application)
+    application.add_handler(TypeHandler(GithubUpdate, github_handler.handle_update))
+    application.add_handler(TypeHandler(GithubAuthUpdate, github_handler.handle_auth_update))
 
-    dp.add_error_handler(error_handler)
+    application.add_error_handler(error_handler)
 
-    updater.start()
+    application.run_polling()
